@@ -1,6 +1,7 @@
 """ defines inquiry capabilities
 """
 
+
 import random
 from prettytable import PrettyTable
 from utils import stage_row, first_stage_row, wrap_list
@@ -204,7 +205,6 @@ def InferentialCommonGround(CL_InferentialTheory, CR_InferentialTheory):
                              AgainstMove = frozenset.intersection(CL_InferentialTheory.AgainstMove, CR_InferentialTheory.AgainstMove))
 
 
-
 def InquiryFor(frame, target = 'random', proposal = 'undeclared', CL_strategy = 'random', CR_strategy = 'random',
                CL_InferentialTheory = 'undeclared', CR_InferentialTheory = 'undeclared'):
     if CL_InferentialTheory == 'undeclared':
@@ -257,6 +257,7 @@ def InquiryAgainst(frame, target = 'random', proposal = 'undeclared', CL_strateg
         lst.append(c)
     result = Inquiry(MSF = c.MSF, ListOfStages = lst, CL_InferentialTheory = CL_InferentialTheory, CR_InferentialTheory = CR_InferentialTheory, CL_Strategy = CL_strategy, CR_Strategy = CR_strategy)
     return result
+
 
 def InquiryFromStage(orig_inq, stage_num, next_stage = None, CL_strategy = None, CR_strategy = None):
     if not CL_strategy:
