@@ -1,7 +1,7 @@
 """ defines the CM closure operations
 """
 
-from msf import MSF, exff_closure
+from agents.msf import MSF, exff_closure
 
 
 def cm_imp_closure_once(input_imp):
@@ -143,13 +143,13 @@ def cm_inc_closure(input_imp, input_inc):
 def msf_cm_full_closure_once(frame):
     cm_imp_first_time = cm_imp_closure(frame.imp)
     cm_inc_first_time = cm_inc_closure_once(cm_imp_first_time, frame.inc)
-    exff_imp_first_time = exff_closure(language= frame.L, imp= cm_imp_first_time, inc= cm_inc_first_time)
+    exff_imp_first_time = exff_closure(language= frame.lang, imp= cm_imp_first_time, inc= cm_inc_first_time)
     # Notice closing the INC under CM creates more incoherent sets and hence more exff sets, which in turn create more
     # implications via exff. So we have to close the IMP under exff after we generate more incoherent sets.
     # We consider closing under cm_imp, cm_inc, exff in turn as closing under cm once. Strictly speaking, it doesn't
     # make too much sense of closing once, since, e.g., exff apparently creates more implications that will produce more
     # imcoherent sets under CM.
-    return MSF(lang = frame.L, imp = exff_imp_first_time, INC = cm_inc_first_time)
+    return MSF(lang = frame.lang, imp = exff_imp_first_time, INC = cm_inc_first_time)
 
 
 def msf_cm_full_closure(frame):

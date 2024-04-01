@@ -1,4 +1,4 @@
-""" basic movement options in the dialogue
+""" basic moves that can be made by agents in the dialogue
 """
 
 
@@ -25,8 +25,8 @@ class MoveType:
         self.prem = prem
         self.val = val
         self.conc = conc
-        self.move_label = label_maker(move_label, self.prem, self.val, self.conc)
-        self.short_label = short_label_maker(prem = self.prem, val = self.val, conc = self.conc)
+        self.move_label = self._make_label(move_label, self.prem, self.val, self.conc)
+        self.short_label = self._make_short_label(prem = self.prem, val = self.val, conc = self.conc)
 
     def show(self):
         print(self.move_label)
@@ -38,34 +38,32 @@ class MoveType:
             text = str(set(self.prem)) + '#' + str(self.conc)
         return text
 
-
-def label_maker(label, prem, val, conc):
-    if label:
-        pass
-    else:
-        label = 'a_'
-        for p in prem:
-            label += str(p) + ', a_'
-        label = label[0:-4] # strip trailing ', a_'
-        if val == 'reason for':
-            label += ' entails '
+    def _make_label(self, label, prem, val, conc):
+        if label:
+            pass
         else:
-            label += ' excludes '
-        label += 'a_' + str(conc)
+            label = 'a_'
+            for p in prem:
+                label += str(p) + ', a_'
+            label = label[0:-4] # strip trailing ', a_'
+            if val == 'reason for':
+                label += ' entails '
+            else:
+                label += ' excludes '
+            label += 'a_' + str(conc)
 
-    return label
+        return label
 
-
-def short_label_maker(prem, val, conc):
-    shortlable = str()
-    for p in list(prem):
-        shortlable = shortlable + str(p)
-    if val == 'reason for':
-        shortlable = shortlable + 'F'
-    if val == 'reason against':
-        shortlable = shortlable + 'A'
-    shortlable = shortlable + str(conc)
-    return shortlable
+    def _make_short_label(self, prem, val, conc):
+        shortlable = str()
+        for p in list(prem):
+            shortlable = shortlable + str(p)
+        if val == 'reason for':
+            shortlable = shortlable + 'F'
+        if val == 'reason against':
+            shortlable = shortlable + 'A'
+        shortlable = shortlable + str(conc)
+        return shortlable
 
 
 def same_move_type(movetype_1, movetype_2):

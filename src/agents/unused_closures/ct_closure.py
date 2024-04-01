@@ -1,7 +1,7 @@
 """ defines the ct closure operations
 """
 
-from msf import exff_closure, MSF
+from agents.msf import MSF, exff_closure
 from cm_closure import cm_imp_closure, cm_imp_closure_once, cm_inc_closure, cm_inc_closure_once, msf_cm_full_closure, msf_cm_full_closure_once
 
 
@@ -41,8 +41,8 @@ def ct_inc_closure(input_imp, input_inc):
 def msf_ct_full_closure_once(frame):
     ct_imp_first_time = ct_imp_closure(frame.imp)
     ct_inc_first_time = ct_inc_closure_once(ct_imp_first_time, frame.inc)
-    exff_imp_first_time = exff_closure(language= frame.L, imp= ct_imp_first_time, inc= ct_inc_first_time)
-    return MSF(lang = frame.L, imp = exff_imp_first_time, inc =  ct_inc_first_time)
+    exff_imp_first_time = exff_closure(language= frame.lang, imp= ct_imp_first_time, inc= ct_inc_first_time)
+    return MSF(lang = frame.lang, imp = exff_imp_first_time, inc =  ct_inc_first_time)
 
 
 def msf_ct_full_closure(frame):
@@ -62,15 +62,15 @@ def unused_msf_closure(frame, close_under, times = 1):
     '''
     if times == 'full':
         if close_under == 'cm_imp':
-            return MSF(lang = frame.L, imp = cm_imp_closure(frame.imp), inc =  frame.inc)
+            return MSF(lang = frame.lang, imp = cm_imp_closure(frame.imp), inc =  frame.inc)
         elif close_under == 'cm_inc':
-            return MSF(lang = frame.L, imp = frame.imp, inc =  cm_inc_closure(frame.imp, frame.inc))
+            return MSF(lang = frame.lang, imp = frame.imp, inc =  cm_inc_closure(frame.imp, frame.inc))
         elif close_under == 'cm':
             return msf_cm_full_closure(frame)
         elif close_under == 'ct_imp':
-            return MSF(lang = frame.L, imp = ct_imp_closure(frame.imp), inc =  frame.inc)
+            return MSF(lang = frame.lang, imp = ct_imp_closure(frame.imp), inc =  frame.inc)
         elif close_under == 'ct_inc':
-            return MSF(lang = frame.L, imp = frame.imp, inc =  ct_inc_closure(frame.imp, frame.inc))
+            return MSF(lang = frame.lang, imp = frame.imp, inc =  ct_inc_closure(frame.imp, frame.inc))
         elif close_under == 'ct':
             return msf_ct_full_closure(frame)
         elif close_under == 'cm and ct':
@@ -90,12 +90,12 @@ def unused_msf_closure(frame, close_under, times = 1):
             result = cm_imp_closure_once(frame.imp)
             for i in range(times - 1):
                 result = cm_imp_closure_once(result)
-            return MSF(lang = frame.L, imp = result, inc =  frame.inc)
+            return MSF(lang = frame.lang, imp = result, inc =  frame.inc)
         elif close_under == 'cm_inc':
             result = cm_inc_closure_once(frame.imp, frame.inc)
             for i in range(times - 1):
                 result = cm_inc_closure_once(frame.imp, result)
-            return MSF(lang = frame.L, imp = frame.imp, inc =  result)
+            return MSF(lang = frame.lang, imp = frame.imp, inc =  result)
         elif close_under == 'cm':
             result = msf_cm_full_closure_once(frame)
             for i in range(times - 1):
@@ -105,12 +105,12 @@ def unused_msf_closure(frame, close_under, times = 1):
             result = ct_imp_closure(frame.imp)
             for i in range(times - 1):
                 result = ct_imp_closure(result)
-            return MSF(lang = frame.L, imp = result, inc =  frame.inc)
+            return MSF(lang = frame.lang, imp = result, inc =  frame.inc)
         elif close_under == 'ct_inc':
             result = ct_inc_closure(frame.imp, frame.inc)
             for i in range(times - 1):
                 result = ct_inc_closure(frame.imp, result)
-            return MSF(lang = frame.L, imp = frame.imp, inc =  result)
+            return MSF(lang = frame.lang, imp = frame.imp, inc =  result)
         elif close_under == 'ct':
             result = msf_ct_full_closure_once(frame)
             for i in range(times - 1):

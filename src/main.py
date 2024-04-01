@@ -18,15 +18,14 @@ E.g. ['a_0', 'a_1', 'a_2'] would be an enumerated language with 3 sentences. So 
 """
 
 import ast
-from user_interface import UserInterface
+from env.user_interface import UserInterface
 
 import pdb
 
 
 def main():
     lang = ['a_0', 'a_1', 'a_2', 'a_3', 'a_4', 'a_5', 'a_6']
-    user_interface = UserInterface(lang)
-    user_interface.run()
+    UserInterface(lang)
 
 
 if __name__ == "__main__":

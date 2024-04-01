@@ -1,9 +1,9 @@
 """defines manual inquiry
 """
 
-from stage import first_move_for_random_premise, first_move_against_random_premise, first_move_for, first_move_against, manual_next_stage, random_next_stage
+from env.stage import manual_next_stage, random_next_stage
+from env.transition_function import first_move_for, first_move_against, first_move_for_random_premise, first_move_against_random_premise
 from inquiry import Inquiry
-
 
 
 def manual_inquiry_random_first_move(frame, val, target, cl_inferential_theory, cr_inferential_theory):
@@ -31,10 +31,10 @@ def manual_inquiry_first_move(frame, premise, val, conclusion, cl_inferential_th
     lst = [c]
     return Inquiry(msf = frame, list_of_stages = lst, cl_inferential_theory = cl_inferential_theory, cr_inferential_theory = cr_inferential_theory)
 
-def manual_inquiry_completion_single(inq, targetnum, pragsig, proposal, val):
+def manual_inquiry_completion_single(inq, targetnum, prag_sig, proposal, val):
     last = inq.list_of_stages[-1]
     target = inq.list_of_stages[targetnum]
-    s = manual_next_stage(last_stage = last, targetstage = target, pragsig = pragsig, proposal = proposal,
+    s = manual_next_stage(last_stage = last, target_stage = target, prag_sig = prag_sig, proposal = proposal,
                         val = val)
     return Inquiry(msf = inq.msf, list_of_stages = inq.list_of_stages + [s], cl_inferential_theory = inq.cl_inferential_theory, cr_inferential_theory = inq.cr_inferential_theory)
 

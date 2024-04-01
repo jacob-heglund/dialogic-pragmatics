@@ -1,8 +1,7 @@
 """ defines output for Dialogic Pragmatics 2 (DP2)
 """
 
-from msf import msf_closure
-
+from agents.msf import msf_closure
 
 def inquiry_to_msf(inquiry):
     imp = []
