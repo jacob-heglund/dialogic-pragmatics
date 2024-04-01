@@ -4,6 +4,7 @@ import random
 from env.score import Score, ScoreSit
 from env.stage import Stage
 
+
 EmptyScore_CL = Score('CL', frozenset(), frozenset(), frozenset(), frozenset())
 
 EmptyScore_CR = Score('CR', frozenset(), frozenset(), frozenset(), frozenset())

@@ -4,10 +4,10 @@
 class Score:
     def __init__(self, subject, ac, rc, ae, re):
         self.subject = subject
-        self.ac = ac    #accept committed
-        self.rc = rc    #reject committed
-        self.ae = ae    #accept entitled
-        self.re = re    #reject entitled
+        self.ac = ac    # accept committed
+        self.rc = rc    # reject committed
+        self.ae = ae    # accept entitled
+        self.re = re    # reject entitled
 
 
 class ScoreSit:

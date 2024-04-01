@@ -59,9 +59,9 @@ class MSF:
         self.inc = inc  # Set of Incompatibilities
         self.exff = exff_sets(self.lang, self.inc)
         self.exc = self._exc_generator(self.lang, inc)  # Set of Exclusions
-        self.for_move = self._possible_for_moves(self.lang, imp, inc)
-        self.against_move = self._possible_against_moves(self.lang, inc)
-        self.strange_imp = self._strange_imp(self.lang, self.imp, self.inc)
+        self.for_move = self._get_possible_for_moves(self.lang, imp, inc)
+        self.against_move = self._get_possible_against_moves(self.lang, inc)
+        self.strange_imp = self._get_strange_imp(self.lang, self.imp, self.inc)
         self.code = self._code_msf(self.lang, self.imp, self.inc)
         self.n_reasons = self._find_n_reasons(language = self.lang, for_moves = self.for_move, against_moves = self.against_move)
         self.reason_ratio = self._reason_ratio_calculator(language = self.lang, for_moves= self.for_move, against_moves = self.against_move)
@@ -219,19 +219,19 @@ class MSF:
             result[i] = frozenset(against)
         return result
 
-    def _possible_for_moves(self, lang: list, imp: frozenset, inc: frozenset):
+    def _get_possible_for_moves(self, lang: list, imp: frozenset, inc: frozenset):
         for_move = []
-        strangeimp = []#Some implications are weird in the sense that the premises and conclusion are jointly
+        strange_imp = [] #Some implications are weird in the sense that the premises and conclusion are jointly
                         #persistently in concsistent. We don't allow agents to use such imp in a for-move.
         for i in imp:
             if frozenset.union(i[0], frozenset([i[1]])) in exff_sets(lang, inc):
-                strangeimp.append(i)
-        pool = imp - co_generator(lang) - exff_generator(lang, inc) - frozenset(self._strange_imp(lang, imp, inc))
+                strange_imp.append(i)
+        pool = imp - co_generator(lang) - exff_generator(lang, inc) - frozenset(self._get_strange_imp(lang, imp, inc))
         for i in pool:
             for_move.append(MoveType(prem = i[0], val = 'reason for', conc = i[1], move_label = str(sorted({lang[i] for i in i[0]})) + ' entails ' + lang[i[1]]))
         return frozenset(for_move)
 
-    def _possible_against_moves(self, lang, inc):
+    def _get_possible_against_moves(self, lang, inc):
         against_move = []
         exc = self._exc_generator(lang, inc)
         for i in range(len(lang)):
@@ -239,15 +239,15 @@ class MSF:
                 against_move.append(MoveType(s, 'reason against', i, str(sorted({lang[n] for n in s})) + ' excludes ' + lang[i]))
         return frozenset(against_move)
 
-    def _strange_imp(self, lang, imp, inc):
+    def _get_strange_imp(self, lang, imp, inc):
         # Some implications are weird in the sense that the premises and conclusion are jointly
         # persistently in concsistent. We don't allow agents to use such imp in a for-move.
-        strangeimp = []
+        strange_imp = []
         for i in imp:
             if i[0] not in exff_sets(lang, inc):
                 if frozenset.union(i[0], frozenset([i[1]])) in exff_sets(lang, inc):
-                    strangeimp.append(i)
-        return frozenset(strangeimp)
+                    strange_imp.append(i)
+        return frozenset(strange_imp)
 
     def _code_msf(self, language, imp, inc):
         """

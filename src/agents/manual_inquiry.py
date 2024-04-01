@@ -3,7 +3,7 @@
 
 from env.stage import manual_next_stage, random_next_stage
 from env.transition_function import first_move_for, first_move_against, first_move_for_random_premise, first_move_against_random_premise
-from inquiry import Inquiry
+from env.inquiry import Inquiry
 
 
 def manual_inquiry_random_first_move(frame, val, target, cl_inferential_theory, cr_inferential_theory):

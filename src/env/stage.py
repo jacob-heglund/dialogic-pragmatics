@@ -434,21 +434,21 @@ def next_stage(last_stage, cl_strategy, cr_strategy):
     if last_stage.agent == 'CL':
         if cr_strategy == 'random':
             return random_next_stage(stage = last_stage)
-        elif cr_strategy == 'minimize ac':
+        elif cr_strategy == 'minimize_ac':
             return minimize_ac_next_stage(stage = last_stage)
-        elif cr_strategy == 'one step ahead':
+        elif cr_strategy == 'one_step_ahead':
             return one_step_ahead_next_stage(stage = last_stage)
-        else: print('Error: Currently, CL and CR have only three strategies: \'random\', \'minimize ac\' and \'one step ahead\'.')
+        else: print('Error: Currently, CL and CR have only three strategies: \'random\', \'minimize_ac\' and \'one_step_ahead\'.')
 
     elif last_stage.agent == 'CR':
         if cl_strategy == 'random':
             return random_next_stage(stage = last_stage)
-        elif cl_strategy == 'minimize ac':
+        elif cl_strategy == 'minimize_ac':
             return minimize_ac_next_stage(stage = last_stage)
-        elif cl_strategy == 'one step ahead':
+        elif cl_strategy == 'one_step_ahead':
             return one_step_ahead_next_stage(stage = last_stage)
         else:
-            print('Error: Currently, CL and CR have only three strategies: \'random\', \'minimize ac\' and \'one step ahead\'.')
+            print('Error: Currently, CL and CR have only three strategies: \'random\', \'minimize_ac\' and \'one_step_ahead\'.')
 
 
 

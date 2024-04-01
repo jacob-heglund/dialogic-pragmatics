@@ -101,3 +101,4 @@ def random_inferential_theory_generator(msf, for_move_size = 'random', against_m
         selected_against_move = frozenset(random.sample(msf.against_move, k))
 
     return InferentialTheory(for_move = selected_for_move, against_move = selected_against_move)
+

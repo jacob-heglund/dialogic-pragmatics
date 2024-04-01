@@ -1,26 +1,23 @@
-""" defines agent inquiry capabilities
+""" defines an episode of an inquiry environment
 """
 
 
-import random
 from prettytable import PrettyTable
 from utils.utils import stage_row, first_stage_row, wrap_list
 from agents.inferential_theory import InferentialTheory
-from env.stage import next_stage, verdict
-
-from env.transition_function import first_move_for_random_premise, first_move_against_random_premise, \
-                            manual_initial_move_for,manual_initial_move_against, \
-                            random_first_move_for, random_first_move_against \
+from env.stage import verdict
 
 
 class Inquiry:
+    """ defines an inquiry environment where two agents ask for and give reasons against different sentences in a language
+    """
     def __init__(self, msf, list_of_stages, cl_inferential_theory, cr_inferential_theory, cl_strategy = None, cr_strategy = None):
         self.msf = msf
         self.list_of_stages = list_of_stages
         self.verdict = verdict(self.list_of_stages[-1])
         self.cl_inferential_theory = cl_inferential_theory
         self.cr_inferential_theory = cr_inferential_theory
-        self.icg = inferential_common_ground(cl_inferential_theory = self.cl_inferential_theory,cr_inferential_theory = self.cr_inferential_theory)
+        self.icg = self._get_inferential_common_ground(cl_inferential_theory = self.cl_inferential_theory,cr_inferential_theory = self.cr_inferential_theory)
         self.cl_homogeneity = (len(self.icg.for_move) / len(self.cl_inferential_theory.for_move), len(self.icg.against_move) / len(self.cl_inferential_theory.against_move))
         self.cr_homogeneity = (len(self.icg.for_move) / len(self.cr_inferential_theory.for_move), len(self.icg.against_move) / len(self.cr_inferential_theory.against_move))
         self.cl_strategy = cl_strategy
@@ -53,7 +50,7 @@ class Inquiry:
 
         print('The propositional common ground is', list(common_ground))
 
-    def viewstage(self, stage):
+    def view_stage(self, stage):
         '''
 
         :param stage:
@@ -183,11 +180,11 @@ class Inquiry:
             self.show_full_table()
 
         elif isinstance(stage, int):
-            self.viewstage(stage = stage)
+            self.view_stage(stage = stage)
 
         elif stage == 'all':
             for i in range(0, len(self.list_of_stages)):
-                self.viewstage(stage = i)
+                self.view_stage(stage = i)
 
         else:
             print('The parameter stage can be set to \'all\' or an integer. If set to be an integer, say 7,'
@@ -198,138 +195,5 @@ class Inquiry:
         print()
         print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^End of an inquiry display^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
-
-def inferential_common_ground(cl_inferential_theory, cr_inferential_theory):
-    return InferentialTheory(for_move = frozenset.intersection(cl_inferential_theory.for_move, cr_inferential_theory.for_move),
-                             against_move = frozenset.intersection(cl_inferential_theory.against_move, cr_inferential_theory.against_move))
-
-
-def run_episode(frame, target = 'random', proposal = 'undeclared', cl_strategy = 'random', cr_strategy = 'random',
-               cl_inferential_theory = 'undeclared', cr_inferential_theory = 'undeclared', inquiry_goal='argue_for'):
-    """runs a
-
-    Args:
-        inquiry_goal (str, optional): Defines the moves made by agents in the dialogue. Defaults to 'argue_for'.
-
-    Returns:
-        _type_: _description_
-    """
-
-    valid_inquiry_goals = ["argue_for", "argue_against"]
-    if inquiry_goal not in valid_inquiry_goals:
-        raise ValueError(f"Error: Inquiry goal must be one of {valid_inquiry_goals}.")
-
-    # define agent policies
-    if cl_inferential_theory == 'undeclared':
-        cl_inferential_theory = InferentialTheory(frame.for_move, frame.against_move)
-    if cr_inferential_theory == 'undeclared':
-        cr_inferential_theory = InferentialTheory(frame.for_move, frame.against_move)
-
-    # take action
-    # input conclusion as a string, e.g. 'a_2'
-    if proposal != 'undeclared' and target != 'random':
-        print('You can either specify proposal, of form ([1,2,3],4), or target, of form \'a_2\', but not both.')
-
-    elif target != 'random':
-        if inquiry_goal == "argue_for":
-            c = first_move_for_random_premise(frame = frame, conclusion = target, cl_inferential_theory = cl_inferential_theory,
-                                           cr_inferential_theory = cr_inferential_theory)
-        elif inquiry_goal == "argue_against":
-            c = first_move_against_random_premise(frame = frame, target = target, cl_inferential_theory = cl_inferential_theory,
-                            cr_inferential_theory = cr_inferential_theory)
-
-    elif proposal != 'undeclared':
-        (a,b) = proposal
-        if inquiry_goal == "argue_for":
-            c = manual_initial_move_for(frame = frame, proposal = (frozenset(a), b), cl_inferential_theory = cl_inferential_theory,
-                                        cr_inferential_theory = cr_inferential_theory)
-        elif inquiry_goal == "argue_against":
-            c = manual_initial_move_against(frame = frame, proposal = (frozenset(a), b), cl_inferential_theory = cl_inferential_theory,
-                                        cr_inferential_theory = cr_inferential_theory)
-
-    else:
-        if inquiry_goal == "argue_for":
-            c = random_first_move_for(frame = frame, cl_inferential_theory = cl_inferential_theory, cr_inferential_theory = cr_inferential_theory)
-        elif inquiry_goal == "argue_against":
-            c = random_first_move_against(frame = frame, cl_inferential_theory = cl_inferential_theory, cr_inferential_theory = cr_inferential_theory)
-
-        lst = [c]
-    while c.available_moves['for'] != frozenset() or c.available_moves['against'] != frozenset():
-        c = next_stage(last_stage = c, cl_strategy = cl_strategy, cr_strategy = cr_strategy)
-        lst.append(c)
-    result = Inquiry(msf = c.msf, list_of_stages = lst, cl_inferential_theory = cl_inferential_theory, cr_inferential_theory = cr_inferential_theory, cl_strategy = cl_strategy, cr_strategy = cr_strategy)
-    return result
-
-
-def run_single_inquiry_for(frame, target = 'random', proposal = 'undeclared', cl_strategy = 'random', cr_strategy = 'random',
-               cl_inferential_theory = 'undeclared', cr_inferential_theory = 'undeclared'):
-    if cl_inferential_theory == 'undeclared':
-        cl_inferential_theory = InferentialTheory(frame.for_move, frame.against_move)
-    if cr_inferential_theory == 'undeclared':
-        cr_inferential_theory = InferentialTheory(frame.for_move, frame.against_move)
-    # input conclusion as a string, e.g. 'a_2'
-    if proposal != 'undeclared' and target != 'random':
-        print('You can either specify proposal, of form ([1,2,3],4), or target, of form \'a_2\', but not both.')
-    elif target != 'random':
-        c = first_move_for_random_premise(frame = frame, conclusion = target, cl_inferential_theory = cl_inferential_theory,
-                                       cr_inferential_theory = cr_inferential_theory)
-    elif proposal != 'undeclared':
-        (a,b) = proposal
-        c = manual_initial_move_for(frame = frame, proposal = (frozenset(a), b), cl_inferential_theory = cl_inferential_theory,
-                                       cr_inferential_theory = cr_inferential_theory)
-    else:
-        c = random_first_move_for(frame = frame, cl_inferential_theory = cl_inferential_theory, cr_inferential_theory = cr_inferential_theory)
-
-    lst = [c]
-    while c.available_moves['for'] != frozenset() or c.available_moves['against'] != frozenset():
-        c = next_stage(last_stage = c, cl_strategy = cl_strategy, cr_strategy = cr_strategy)
-        lst.append(c)
-    result = Inquiry(msf = c.msf, list_of_stages = lst, cl_inferential_theory = cl_inferential_theory, cr_inferential_theory = cr_inferential_theory, cl_strategy = cl_strategy, cr_strategy = cr_strategy)
-    return result
-
-
-def run_single_inquiry_against(frame, target = 'random', proposal = 'undeclared', cl_strategy = 'random', cr_strategy = 'random',
-               cl_inferential_theory = 'undeclared', cr_inferential_theory = 'undeclared'):
-    if cl_inferential_theory == 'undeclared':
-        cl_inferential_theory = InferentialTheory(frame.for_move, frame.against_move)
-    if cr_inferential_theory == 'undeclared':
-        cr_inferential_theory = InferentialTheory(frame.for_move, frame.against_move)
-    # input conclusion as a string, e.g. 'a_2'
-    if proposal != 'undeclared' and target != 'random':
-        print('You can either specify proposal, of form ([1,2,3],4), or target, of form \'a_2\', but not both.')
-    elif target != 'random':
-        c = first_move_against_random_premise(frame = frame, target = target, cl_inferential_theory = cl_inferential_theory,
-                          cr_inferential_theory = cr_inferential_theory)
-    elif proposal != 'undeclared':
-        (a,b) = proposal
-        c = manual_initial_move_against(frame = frame, proposal = (frozenset(a), b), cl_inferential_theory = cl_inferential_theory,
-                          cr_inferential_theory = cr_inferential_theory)
-    else:
-        c = random_first_move_against(frame = frame, cl_inferential_theory = cl_inferential_theory, cr_inferential_theory = cr_inferential_theory)
-
-    lst = [c]
-    while c.available_moves['for'] != frozenset() or c.available_moves['against'] != frozenset():
-        c = next_stage(last_stage = c, cl_strategy = cl_strategy, cr_strategy = cr_strategy)
-        lst.append(c)
-    result = Inquiry(msf = c.msf, list_of_stages = lst, cl_inferential_theory = cl_inferential_theory, cr_inferential_theory = cr_inferential_theory, cl_strategy = cl_strategy, cr_strategy = cr_strategy)
-    return result
-
-
-def inquiry_from_stage(orig_inq, stage_num, next_stage_flag = None, cl_strategy = None, cr_strategy = None):
-    if not cl_strategy:
-        cl_strategy = orig_inq.cl_strategy
-    if not cr_strategy:
-        cr_strategy = orig_inq.cr_strategy
-
-    stage_list = orig_inq.list_of_stages[:stage_num]
-
-    if next_stage_flag:
-        stage_list.append(next_stage_flag)
-
-    stage = stage_list[-1]
-
-    while stage.available_moves['for'] != frozenset() or stage.available_moves['against'] != frozenset():
-        stage = next_stage_flag(last_stage=stage, cl_strategy=cl_strategy, cr_strategy=cr_strategy)
-        stage_list.append(stage)
-
-    return Inquiry(msf = stage.msf, list_of_stages = stage_list, cl_inferential_theory=orig_inq.cl_inferential_theory, cr_inferential_theory = orig_inq.cr_inferential_theory, cl_strategy = cl_strategy, cr_strategy = cr_strategy)
+    def _get_inferential_common_ground(self, cl_inferential_theory, cr_inferential_theory):
+        return InferentialTheory(for_move = frozenset.intersection(cl_inferential_theory.for_move, cr_inferential_theory.for_move), against_move = frozenset.intersection(cl_inferential_theory.against_move, cr_inferential_theory.against_move))
