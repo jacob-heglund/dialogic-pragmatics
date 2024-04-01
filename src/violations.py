@@ -16,16 +16,16 @@ def find_violations(imps: frozenset) -> dict:
         else:
             prems_to_concs[i[0]] = frozenset.union(prems_to_concs[i[0]], frozenset({i[1]}))
 
-    for gamma, c_gamma in prems_to_concs.items(): # for all premise sets gamma in IMP
+    for gamma, c_gamma in prems_to_concs.items(): # for all premise sets gamma in imp
 
-        non_CO_c_gamma = frozenset.difference(c_gamma, gamma) # non-CO consequences of gamma
+        non_co_c_gamma = frozenset.difference(c_gamma, gamma) # non-CO consequences of gamma
 
-        for delta in powerset_(non_CO_c_gamma): # for all non-empty subsets of non-CO consequences of gamma delta
+        for delta in powerset_(non_co_c_gamma): # for all non-empty subsets of non-CO consequences of gamma delta
 
-            c_gammaUdelta = prems_to_concs[frozenset.union(gamma, delta)]
+            c_gamma_union_delta = prems_to_concs[frozenset.union(gamma, delta)]
 
-            cm_viols = frozenset.difference(c_gamma, c_gammaUdelta) # CM viols are difference between C(gamma) and C(gamma U delta), the consequences lost by explicitating delta
-            ct_viols = frozenset.difference(c_gammaUdelta, c_gamma) # CT viols are difference between C(gamma U delta) and C(gamma), the consequences gained by explicitating delta
+            cm_viols = frozenset.difference(c_gamma, c_gamma_union_delta) # cm viols are difference between C(gamma) and C(gamma U delta), the consequences lost by explicitating delta
+            ct_viols = frozenset.difference(c_gamma_union_delta, c_gamma) # ct viols are difference between C(gamma U delta) and C(gamma), the consequences gained by explicitating delta
 
             gammadelta_to_viols[(gamma, delta)] = (cm_viols, ct_viols) # ordered pair (gamma, delta) maps to ordered pair (cm_viols, ct_viols)
 
@@ -36,11 +36,11 @@ def show_violations(imps: frozenset, longform : bool = True):
 
     gammadelta_to_viols = find_violations(imps)
 
-    CM_viols_count = 0
-    CT_viols_count = 0
+    cm_viols_count = 0
+    ct_viols_count = 0
 
-    CM_violator_count = 0
-    CT_violator_count = 0
+    cm_violator_count = 0
+    ct_violator_count = 0
 
     for gammadelta, viols in gammadelta_to_viols.items():
 
@@ -51,24 +51,23 @@ def show_violations(imps: frozenset, longform : bool = True):
         ct_viols = viols[1]
 
         if len(cm_viols) != 0:
-            CM_viols_count += len(cm_viols)
-            CM_violator_count += 1
+            cm_viols_count += len(cm_viols)
+            cm_violator_count += 1
             if longform:
                 for viol in cm_viols:
-                    print('CM violation: ' + str(set(gamma)) + '⊨' + str(viol) + ' and ' + str(set(gamma)) + '⊨' + str(set(delta)) + ', but not ' + str(set(union)) + '⊨' + str(viol))
+                    print('cm violation: ' + str(set(gamma)) + '⊨' + str(viol) + ' and ' + str(set(gamma)) + '⊨' + str(set(delta)) + ', but not ' + str(set(union)) + '⊨' + str(viol))
                     print('\n')
 
         if len(ct_viols) != 0:
-            CT_viols_count += len(ct_viols)
-            CT_violator_count += 1
+            ct_viols_count += len(ct_viols)
+            ct_violator_count += 1
             if longform:
                 for viol in ct_viols:
-                    print('CT violation: ' + str(set(gamma)) + '⊨' + str(set(delta)) + ' and ' + str(set(union)) + '⊨' + str(viol) + ', but not ' + str(set(gamma)) + '⊨' + str(viol))
+                    print('ct violation: ' + str(set(gamma)) + '⊨' + str(set(delta)) + ' and ' + str(set(union)) + '⊨' + str(viol) + ', but not ' + str(set(gamma)) + '⊨' + str(viol))
                     print('\n')
 
     if longform:
-        print(str(CM_violator_count) + ' premise sets had CM violations. There were ' + str(CM_viols_count) + ' total CM violations.')
-        print(str(CT_violator_count) + ' premise sets had CT violations. There were ' + str(CT_viols_count) + ' total CT violations.')
+        print(str(cm_violator_count) + ' premise sets had cm violations. There were ' + str(cm_viols_count) + ' total cm violations.')
+        print(str(ct_violator_count) + ' premise sets had ct violations. There were ' + str(ct_viols_count) + ' total ct violations.')
     else:
-        print(str(CM_violator_count) + ',' + str(CM_viols_count) + ',' + str(CT_violator_count) + ',' + str(CT_viols_count))
-
+        print(str(cm_violator_count) + ',' + str(cm_viols_count) + ',' + str(ct_violator_count) + ',' + str(ct_viols_count))

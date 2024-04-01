@@ -42,7 +42,7 @@ def agentswitch(x):
 
 def wrap_list(lst, items_per_line=5):
     """ This is used to display long lists. By default, it presents five elements on each line. """
-    lines = list()
+    lines = []
     for i in range(0, len(lst), items_per_line):
         chunk = lst[i:i + items_per_line]
         line = ", ".join("{!r}".format(x) for x in chunk)
@@ -52,52 +52,51 @@ def wrap_list(lst, items_per_line=5):
 
 def stage_row(x, stage):
     """ This is used in the .show() method for MSF and inquiry, to display stages except the first stage. """
-    if stage.TargetMove == None:
-        x.add_row([stage.TurnNum,
-               stage.Agent,
+    if stage.target_move is None:
+        x.add_row([stage.turn_num,
+               stage.agent,
                None,
-               stage.PragSig,
-               stage.PrimeMove.MoveLabel,
-               list(stage.FScoreSit.CL.AC),
-               list(stage.FScoreSit.CL.RC),
-               list(stage.FScoreSit.CL.AE),
-               list(stage.FScoreSit.CL.RE),
-               list(stage.FScoreSit.CR.AC),
-               list(stage.FScoreSit.CR.RC),
-               list(stage.FScoreSit.CR.AE),
-               list(stage.FScoreSit.CR.RE)
+               stage.prag_sig,
+               stage.prime_move.move_label,
+               list(stage.f_score_sit.cl.ac),
+               list(stage.f_score_sit.cl.rc),
+               list(stage.f_score_sit.cl.ae),
+               list(stage.f_score_sit.cl.re),
+               list(stage.f_score_sit.cr.ac),
+               list(stage.f_score_sit.cr.rc),
+               list(stage.f_score_sit.cr.ae),
+               list(stage.f_score_sit.cr.re)
                ])
     else:
-        x.add_row([stage.TurnNum,
-               stage.Agent,
-               stage.TargetMove.TurnNum,
-               stage.PragSig,
-               stage.PrimeMove.MoveLabel,
-               list(stage.FScoreSit.CL.AC),
-               list(stage.FScoreSit.CL.RC),
-               list(stage.FScoreSit.CL.AE),
-               list(stage.FScoreSit.CL.RE),
-               list(stage.FScoreSit.CR.AC),
-               list(stage.FScoreSit.CR.RC),
-               list(stage.FScoreSit.CR.AE),
-               list(stage.FScoreSit.CR.RE)
+        x.add_row([stage.turn_num,
+               stage.agent,
+               stage.target_move.turn_num,
+               stage.prag_sig,
+               stage.prime_move.move_label,
+               list(stage.f_score_sit.cl.ac),
+               list(stage.f_score_sit.cl.rc),
+               list(stage.f_score_sit.cl.ae),
+               list(stage.f_score_sit.cl.re),
+               list(stage.f_score_sit.cr.ac),
+               list(stage.f_score_sit.cr.rc),
+               list(stage.f_score_sit.cr.ae),
+               list(stage.f_score_sit.cr.re)
                ])
 
 
 def first_stage_row(x, stage):
     """ This is used in the .show() method for MSF and inquiry, to display the first stage """
-    x.add_row([stage.TurnNum,
-               stage.Agent,
+    x.add_row([stage.turn_num,
+               stage.agent,
                None,
-               stage.PragSig,
-               stage.PrimeMove.MoveLabel,
-               list(stage.FScoreSit.CL.AC),
-               list(stage.FScoreSit.CL.RC),
-               list(stage.FScoreSit.CL.AE),
-               list(stage.FScoreSit.CL.RE),
-               list(stage.FScoreSit.CR.AC),
-               list(stage.FScoreSit.CR.RC),
-               list(stage.FScoreSit.CR.AE),
-               list(stage.FScoreSit.CR.RE)
+               stage.prag_sig,
+               stage.prime_move.move_label,
+               list(stage.f_score_sit.cl.ac),
+               list(stage.f_score_sit.cl.rc),
+               list(stage.f_score_sit.cl.ae),
+               list(stage.f_score_sit.cl.re),
+               list(stage.f_score_sit.cr.ac),
+               list(stage.f_score_sit.cr.rc),
+               list(stage.f_score_sit.cr.ae),
+               list(stage.f_score_sit.cr.re)
                ])
-

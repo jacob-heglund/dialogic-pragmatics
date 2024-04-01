@@ -10,38 +10,38 @@ class MoveType:
 
     Attributes
     ----------
-    Prem : frozenset
+    prem : frozenset
         a frozenset of numbers, each number is the index of a sentence in the list for the enumerated language
-        for example, a Prem of a MoveType can be frozenset([1, 2, 4]), meaning the premise of the move is the sentences
+        for example, a prem of a MoveType can be frozenset([1, 2, 4]), meaning the premise of the move is the sentences
         indexed by 1, 2, 4 in the enumerated language.
-    Val : str
+    val : str
         it's either 'reason for' or 'reason against'
-    Conc : int
+    conc : int
         the index of a sentence in the enumerated language, as an integer
-    MoveLabel : str
+    move_label : str
         a str for the name of this move-type, e.g. 'a_1, a_2, a_3 entails a_4', or 'a_2, a_5 excludes a_1'
     """
-    def __init__(self, Prem, Val, Conc, MoveLabel):
-        self.Prem = Prem
-        self.Val = Val
-        self.Conc = Conc
-        self.MoveLabel = LabelMaker(MoveLabel, self.Prem, self.Val, self.Conc)
-        self.ShortLabel = ShortLabelMaker(Prem = self.Prem, Val = self.Val, Conc = self.Conc)
+    def __init__(self, prem, val, conc, move_label):
+        self.prem = prem
+        self.val = val
+        self.conc = conc
+        self.move_label = label_maker(move_label, self.prem, self.val, self.conc)
+        self.short_label = short_label_maker(prem = self.prem, val = self.val, conc = self.conc)
 
     def show(self):
-        print(self.MoveLabel)
+        print(self.move_label)
 
     def to_text(self):
-        if self.Val == 'reason for':
-            text = str(set(self.Prem)) + '⊨' + str(self.Conc)
+        if self.val == 'reason for':
+            text = str(set(self.prem)) + '⊨' + str(self.conc)
         else:
-            text = str(set(self.Prem)) + '#' + str(self.Conc)
+            text = str(set(self.prem)) + '#' + str(self.conc)
         return text
 
 
-def LabelMaker(label, prem, val, conc):
+def label_maker(label, prem, val, conc):
     if label:
-        return label
+        pass
     else:
         label = 'a_'
         for p in prem:
@@ -52,33 +52,35 @@ def LabelMaker(label, prem, val, conc):
         else:
             label += ' excludes '
         label += 'a_' + str(conc)
-        return label
+
+    return label
 
 
-def ShortLabelMaker(Prem, Val, Conc):
+def short_label_maker(prem, val, conc):
     shortlable = str()
-    for p in list(Prem):
+    for p in list(prem):
         shortlable = shortlable + str(p)
-    if Val == 'reason for':
+    if val == 'reason for':
         shortlable = shortlable + 'F'
-    if Val == 'reason against':
+    if val == 'reason against':
         shortlable = shortlable + 'A'
-    shortlable = shortlable + str(Conc)
+    shortlable = shortlable + str(conc)
     return shortlable
 
 
-def SameMoveType(movetype_1, movetype_2):
-    if movetype_1.Prem == movetype_2.Prem and movetype_1.Val == movetype_2.Val and movetype_1.Conc == movetype_2.Conc:
-        return True
+def same_move_type(movetype_1, movetype_2):
+    if movetype_1.prem == movetype_2.prem and movetype_1.val == movetype_2.val and movetype_1.conc == movetype_2.conc:
+        val = True
     else:
-        return False
+        val = False
 
+    return val
 
 def flip_val(sequent: MoveType) -> MoveType:
-    if sequent.Val == 'reason for':
-        return MoveType(sequent.Prem, 'reason against', sequent.Conc,
-                                    sequent.MoveLabel.replace('entails', 'excludes'))
+    if sequent.val == 'reason for':
+        move = MoveType(sequent.prem, 'reason against', sequent.conc,
+                                    sequent.move_label.replace('entails', 'excludes'))
     else:
-        return MoveType(sequent.Prem, 'reason for', sequent.Conc,
-                                    sequent.MoveLabel.replace('excludes', 'entails'))
-
+        move = MoveType(sequent.prem, 'reason for', sequent.conc,
+                                    sequent.move_label.replace('excludes', 'entails'))
+    return move

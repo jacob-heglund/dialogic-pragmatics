@@ -18,56 +18,56 @@ class MSF:
     ----------
     L : list
         The enumerated language
-    IMP : frozenset
+    imp : frozenset
         a set of implications, each implication is a tuple, whose first element is a frozenset of integers, for indexes
         of premises and second element an integer, for the index of the conclusions.
-    INC : frozenset
-        a set of incoherent sets. Each member of INC is a frozenset of integers. Each integer is an index for a
+    inc : frozenset
+        a set of incoherent sets. Each member of inc is a frozenset of integers. Each integer is an index for a
         sentence in the enumerated language.
 
     Attributes
     ----------
     L : list
         The enumerated language
-    IMP : frozenset
+    imp : frozenset
         a set of implications, each implication is a tuple, whose first element is a frozenset of integers, for indexes
         of premises and second element an integer, for the index of the conclusions.
-    INC : frozenset
-        a set of incoherent sets. Each member of INC is a frozenset of integers. Each integer is an index for a
+    inc : frozenset
+        a set of incoherent sets. Each member of inc is a frozenset of integers. Each integer is an index for a
         sentence in the enumerated language.
-    EXC : dict
+    exc : dict
         a dictionary of exclusions. If \Gamma is incoherent, then for any \gamma in \Gamma, \Gamma - \gamma excludes
         \gamma. This dictionary maps the index of each sentence in the language to the set of sets of indexes of sentences
-        that exclude this sentence. E.g. EXC[2] = {{1},{3,4}}.
-    ForMove : frozenset
+        that exclude this sentence. E.g. exc[2] = {{1},{3,4}}.
+    for_move : frozenset
         the set of all possible for moves in this MSF. each member of the set is an object of class MoveType with its
-        Val == 'reason for'. They correspond one to one with members of IMP of this MSF.
-    AgainstMove : frozenset
+        val == 'reason for'. They correspond one to one with members of imp of this MSF.
+    against_move : frozenset
         the set of all possible against moves in this MSF. each member of the set is an object of class MoveType with
-        its Val == 'reason against'. They correspond one to one with members of EXC of this MSF.
-    StrangeImp:
+        its val == 'reason against'. They correspond one to one with members of exc of this MSF.
+    strange_imp:
         the set of all implications that are strange in the sense that although the set of premises is not persistently
         incoherent, the union of premises and its conclusion is persistently incoherently. We prohibit players from
         using such implications to make moves, as asserting such implications will immediately put the player in to a
         persistenlty incoherent set of commitment.
-    Code : str
-        the code of a MSF can be used to regenerate the same MSF using Decode_MSF function. it's a string of form
+    code : str
+        the code of a MSF can be used to regenerate the same MSF using decode_msf function. it's a string of form
         'len' + n + 'imp' + m + 'inc' + s, where n is the length of language, m is the code for imp, s is the code for inc.
 
         """
-    def __init__(self, L, IMP, INC): # documented under the class
-        self.L = L  # Enumerated Language, as a list of sentences
-        self.IMP = IMP  # Set of Implications
-        self.INC = INC  # Set of Incompatibilities
-        self.ExFF = ExFF_sets(self.L, self.INC)
-        self.EXC = EXC_generator(L, INC)  # Set of Exclusions
-        self.ForMove = PossibleForMoves(L, IMP, INC)
-        self.AgainstMove = PossibleAgainstMoves(L, INC)
-        self.StrangeImp = StrangeImp(self.L, self.IMP, self.INC)
-        self.Code = Code_MSF(self.L, self.IMP, self.INC)
-        self.NumberOfReasons = num_reason_calculator(language = self.L, for_moves = self.ForMove, against_moves = self.AgainstMove)
-        # self.ReasonRatio = reason_ratio_calculator(language = self.L, for_moves= self.ForMove, against_moves = self.AgainstMove)
-        self.MoveDict = move_dict_generator(self)
+    def __init__(self, lang, imp, inc): # documented under the class
+        self.lang = lang  # Enumerated Language, as a list of sentences
+        self.imp = imp  # Set of Implications
+        self.inc = inc  # Set of Incompatibilities
+        self.exff = exff_sets(self.lang, self.inc)
+        self.exc = exc_generator(self.lang, inc)  # Set of Exclusions
+        self.for_move = possible_for_moves(self.lang, imp, inc)
+        self.against_move = possible_against_moves(self.lang, inc)
+        self.strange_imp = strange_imp(self.lang, self.imp, self.inc)
+        self.code = code_msf(self.lang, self.imp, self.inc)
+        self.n_reasons = find_n_reasons(language = self.lang, for_moves = self.for_move, against_moves = self.against_move)
+        # self.ReasonRatio = reason_ratio_calculator(language = self.lang, for_moves= self.for_move, against_moves = self.against_move)
+        self.move_dict = move_dict_generator(self)
 
     def show(self):
         """
@@ -76,41 +76,41 @@ class MSF:
         """
         print(
             "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^Beginning of a MSF display^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-        print('You can retrieve this MSF using the Decode_MSF function with the following code:')
-        print(self.Code)
+        print('You can retrieve this MSF using the decode_msf function with the following code:')
+        print(self.code)
 
         # First calculate pragmatically significant implications.
-        imp = list()
-        for i in self.ForMove:
-            imp.append(str(set(i.Prem)) + '⊨' + str(i.Conc))
+        imp = []
+        for i in self.for_move:
+            imp.append(str(set(i.prem)) + '⊨' + str(i.conc))
         imp.sort()
 
-        # Calculate how many implications are required by ExFF. The number doesn't include those required by both ExFF
-        # and CO. If an implication is required by both ExFF and CO, we consider it required by CO.
+        # Calculate how many implications are required by exff. The number doesn't include those required by both exff
+        # and CO. If an implication is required by both exff and CO, we consider it required by CO.
         exff_co_overlap = 0
-        for i in self.ExFF:
+        for i in self.exff:
             exff_co_overlap = exff_co_overlap + len(i)
-        num_exff_required = len(self.ExFF)*len(self.L) - exff_co_overlap
+        num_exff_required = len(self.exff)*len(self.lang) - exff_co_overlap
 
         # Calculate strange implications.
-        strange = list()
-        for i in self.StrangeImp:
+        strange = []
+        for i in self.strange_imp:
             strange.append(str(set(i[0])) + '⊨' + str(i[1]))
         strange.sort()
 
-        print('This MSF contains in total', len(self.IMP), 'implications, among which', len(imp), 'are pragmatically',
-              'significant,', len(CO_generator(self.L)), 'are required by CO,', num_exff_required, 'are required by ExFF',
+        print('This MSF contains in total', len(self.imp), 'implications, among which', len(imp), 'are pragmatically',
+              'significant,', len(co_generator(self.lang)), 'are required by CO,', num_exff_required, 'are required by exff',
               'and', len(strange), 'are strange in the sense that the premises and the conclusion are jointly persistently incoherent.')
-        print('(Note that if an implication is required both by CO and ExFF, it\'s considered to be required by CO but not ExFF.)')
-        print('This MSF contains', len(self.ForMove), 'pragmatically significant reasons-for with the following distribution:', self.NumberOfReasons['for'], '.')
-        print('This MSF contains', len(self.AgainstMove), 'pragmatically significant reasons-against with the following distribution:', self.NumberOfReasons['against'], '.')
-        print('The Reason Ratio, #reasons-for over #reasons-against, for sentences in this MSF, is as follows:', self.ReasonRatio)
-        print('This MSF contains', len(self.INC), 'incoherent sets, among which', len(self.ExFF), 'are persistently incoherent.')
+        print('(Note that if an implication is required both by CO and exff, it\'s considered to be required by CO but not exff.)')
+        print('This MSF contains', len(self.for_move), 'pragmatically significant reasons-for with the following distribution:', self.n_reasons['for'], '.')
+        print('This MSF contains', len(self.against_move), 'pragmatically significant reasons-against with the following distribution:', self.n_reasons['against'], '.')
+        print('The Reason Ratio, #reasons-for over #reasons-against, for sentences in this msf, is as follows:', self.ReasonRatio)
+        print('This MSF contains', len(self.inc), 'incoherent sets, among which', len(self.exff), 'are persistently incoherent.')
         print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
 
         print('This MSF contains the following',len(imp) ,'pragmatically significant implications, i.e. implications that',
-              'are not required by CO or ExFF and are not strange.')
+              'are not required by CO or exff and are not strange.')
         print(wrap_list(imp, 5))
         print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
@@ -125,19 +125,19 @@ class MSF:
         print('Thus, this MSF has the following pragmatically significant reason-fors:')
         print(
             "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-        for i in range(len(self.L)):
-            f = list()
-            for j in self.ForMove:
-                if j.Conc == i:
-                    f.append(str(set(j.Prem)))
+        for i in range(len(self.lang)):
+            f = []
+            for j in self.for_move:
+                if j.conc == i:
+                    f.append(str(set(j.prem)))
             f.sort()
             print(i, 'has the following', len(f), 'pragmatically significant reasons for it:')
             print(wrap_list(f, 5))
             print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
         # Print out incoherent sets.
-        inc = list()
-        for i in self.INC:
+        inc = []
+        for i in self.inc:
             inc.append(str(set(i)))
         inc.sort()
         print('This MSF contains the following', len(inc), 'incoherent sets:')
@@ -145,8 +145,8 @@ class MSF:
         print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
         # Print out persistently incoherent sets.
-        pinc = list()
-        for i in ExFF_sets(self.L, self.INC):
+        pinc = []
+        for i in exff_sets(self.lang, self.inc):
             pinc.append(str(set(i)))
         pinc.sort()
         print('Among all incoherent sets, the following', len(pinc),' are persistently incoherent:')
@@ -157,9 +157,9 @@ class MSF:
         print('Thus, this MSF contains the following reasons against:')
         print(
             "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-        for i in self.EXC:
-            c = list()
-            for j in self.EXC[i]:
+        for i in self.exc:
+            c = []
+            for j in self.exc[i]:
                 c.append(str(set(j)))
             c.sort()
             print(i, 'has the following', len(c) ,'reasons against it:')
@@ -167,17 +167,17 @@ class MSF:
             print(
                 "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
-        print('The universe of reasons generated by this MSF contains the following', len(self.ForMove),' (pragmatically significant) reasons-for:')
-        reasons_for = list()
-        for i in self.ForMove:
-            reasons_for.append(str(set(i.Prem)) + '⊨' + str(i.Conc))
+        print('The universe of reasons generated by this MSF contains the following', len(self.for_move),' (pragmatically significant) reasons-for:')
+        reasons_for = []
+        for i in self.for_move:
+            reasons_for.append(str(set(i.prem)) + '⊨' + str(i.conc))
         reasons_for.sort()
         print(wrap_list(reasons_for, items_per_line=5))
 
-        print('The universe of reasons generated by this MSF contains the following', len(self.AgainstMove),' (pragmatically significant) reasons-against:')
-        reasons_against = list()
-        for i in self.AgainstMove:
-            reasons_against.append(str(set(i.Prem)) + '#' + str(i.Conc))
+        print('The universe of reasons generated by this MSF contains the following', len(self.against_move),' (pragmatically significant) reasons-against:')
+        reasons_against = []
+        for i in self.against_move:
+            reasons_against.append(str(set(i.prem)) + '#' + str(i.conc))
         reasons_against.sort()
         print(wrap_list(reasons_against, items_per_line=5))
 
@@ -187,20 +187,20 @@ class MSF:
 
 def move_dict_generator(msf): # keep a map from text representations of moves to the actual MoveType objects
     move_dict = dict()
-    for move in msf.ForMove:
+    for move in msf.for_move:
         move_dict[move.to_text] = move
-    for move in msf.AgainstMove:
+    for move in msf.against_move:
         move_dict[move.to_text] = move
     return move_dict
 
 
-def num_reason_calculator(language, for_moves, against_moves):
+def find_n_reasons(language, for_moves, against_moves):
     num_reason_for = [0]*len(language)
     num_reason_against = [0]*len(language)
     for i in for_moves:
-        num_reason_for[i.Conc] = num_reason_for[i.Conc] + 1
+        num_reason_for[i.conc] = num_reason_for[i.conc] + 1
     for i in against_moves:
-        num_reason_against[i.Conc] = num_reason_against[i.Conc] + 1
+        num_reason_against[i.conc] = num_reason_against[i.conc] + 1
     dct_num_reason_for = dict()
     dct_num_reason_against = dict()
     for i in range(len(language)):
@@ -215,8 +215,7 @@ def num_reason_calculator(language, for_moves, against_moves):
 def safe_divide_for_display(num_reason_for, num_reason_against):
     # NOTE I had to define this function since it was literally not included in the files.
     ## Luckily, this function is also not called at all during the execution of a dialogue, so it works fine.
-    ## I think it would have been included in dp_common_funcs, but Bob and his students apparently literally have no idea about any proper programming practices, so don't use git, and therefore that file is not included. Fuck, I hate this.
-
+    ## I think it would have been included in dp_common_funcs, but it wasn't included in the two files that were made available publicly.
     pass
 
 
@@ -224,9 +223,9 @@ def reason_ratio_calculator(language, for_moves, against_moves):
     num_reason_for = [0]*len(language)
     num_reason_against = [0]*len(language)
     for i in for_moves:
-        num_reason_for[i.Conc] = num_reason_for[i.Conc] + 1
+        num_reason_for[i.conc] = num_reason_for[i.conc] + 1
     for i in against_moves:
-        num_reason_against[i.Conc] = num_reason_against[i.Conc] + 1
+        num_reason_against[i.conc] = num_reason_against[i.conc] + 1
     result = dict()
     for i in range(len(language)):
         result[i] = safe_divide_for_display(num_reason_for[i], num_reason_against[i])
@@ -234,7 +233,7 @@ def reason_ratio_calculator(language, for_moves, against_moves):
     return result
 
 
-def Possible_IMP_Generator(language: list) -> frozenset:
+def possible_imp_generator(language: list) -> frozenset:
     """
     Generate the set of all possible implications for a given enumerated language.
     Any set of premises with any conclusion is a potential implication.
@@ -251,7 +250,7 @@ def Possible_IMP_Generator(language: list) -> frozenset:
         frozenset set of implications, each implication is a tuple, whose first element is a frozenset of integers and
         second element an integer
     """
-    result = list()
+    result = []
     lst = [i for i in range(len(language))]
     for i in list_powerset_(lst):
         for j in range(len(language)):
@@ -259,9 +258,9 @@ def Possible_IMP_Generator(language: list) -> frozenset:
     return frozenset(result)
 
 
-def CO_generator(language: list) -> frozenset:
+def co_generator(language: list) -> frozenset:
     # This function generates the list of implications required by CO for any atomic language
-    result = list()
+    result = []
     lst = [i for i in range(len(language))]
     for i in list_powerset_(lst):
         for j in i:
@@ -269,20 +268,20 @@ def CO_generator(language: list) -> frozenset:
     return frozenset(result)
 
 
-def CO_checker(language: list, imp: frozenset):
+def co_checker(language: list, imp: frozenset):
     # This takes a set of implications and checks if that set satisfies CO in a given language
-    return CO_generator(language).issubset(imp)
+    return co_generator(language).issubset(imp)
 
 
-def Possible_non_CO_IMP_Generator(language: list) -> frozenset:
-    return Possible_IMP_Generator(language = language) - CO_generator(language = language)
+def possible_non_co_imp_generator(language: list) -> frozenset:
+    return possible_imp_generator(language = language) - co_generator(language = language)
 
 
-def RandomIMP(language: list, chance = 1/2, size = 'random') -> frozenset:
+def random_imp(language: list, chance = 1/2, size = 'random') -> frozenset:
     """
     Generate a random set of implications of a given enumberated langauge by sampling from the set of all possible
     implications for a given enumerated language.
-    It first generates the size of the resulting IMP, k, by generating a integer in [0, #all possible IMP] following binomial
+    It first generates the size of the resulting imp, k, by generating a integer in [0, #all possible imp] following binomial
     distribution, then sampling k elements in all possible implications without replacement.
 
     Parameters
@@ -298,13 +297,13 @@ def RandomIMP(language: list, chance = 1/2, size = 'random') -> frozenset:
         second element an integer
     """
     if size != 'random':
-        return frozenset.union(frozenset(random.sample(Possible_non_CO_IMP_Generator(language), size)), CO_generator(language))
+        return frozenset.union(frozenset(random.sample(possible_non_co_imp_generator(language), size)), co_generator(language))
     else:
-        k = np.random.binomial(len(Possible_non_CO_IMP_Generator(language)), chance)
-        return frozenset.union(frozenset(random.sample(Possible_non_CO_IMP_Generator(language), k)), CO_generator(language))
+        k = np.random.binomial(len(possible_non_co_imp_generator(language)), chance)
+        return frozenset.union(frozenset(random.sample(possible_non_co_imp_generator(language), k)), co_generator(language))
 
 
-def Possible_INC_Generator(language: list) -> frozenset:
+def possible_inc_generator(language: list) -> frozenset:
     """
     Generates all possible incoherence for a given language, namely all subsets of the language of size 2 or higher
 
@@ -325,7 +324,7 @@ def Possible_INC_Generator(language: list) -> frozenset:
     return result
 
 
-def RandomINC(language: list, size = 'random', chance = 1/2) -> frozenset:
+def random_inc(language: list, size = 'random', chance = 1/2) -> frozenset:
     """
     This generates a random set of sets of integers, to be interpreted as the set of all incoherent sets of sentences
     in some MSF.
@@ -349,16 +348,16 @@ def RandomINC(language: list, size = 'random', chance = 1/2) -> frozenset:
     lst = [i for i in range(len(language))]
 
     if size != 'random':
-        result = frozenset(random.sample(Possible_INC_Generator(language) - frozenset([frozenset(lst)]), size - 1))
+        result = frozenset(random.sample(possible_inc_generator(language) - frozenset([frozenset(lst)]), size - 1))
         return frozenset.union(result, frozenset([frozenset(lst)]))
     else:
-        k = np.random.binomial(len(Possible_INC_Generator(language)), chance)
-        result = frozenset(random.sample(Possible_INC_Generator(language), k))
+        k = np.random.binomial(len(possible_inc_generator(language)), chance)
+        result = frozenset(random.sample(possible_inc_generator(language), k))
         return frozenset.union(result, frozenset([frozenset(lst)]))
 
 
-def ExFF_sets(language: list, inc: frozenset) -> frozenset:
-    exff_sets = list()
+def exff_sets(language: list, inc: frozenset) -> frozenset:
+    exff_sets = []
     for gamma in inc:
         if math.pow(2, (len(language) - len(gamma))) <= len(inc):
             n = 0
@@ -370,9 +369,9 @@ def ExFF_sets(language: list, inc: frozenset) -> frozenset:
     return frozenset(exff_sets)
 
 
-def EXC_generator(lang: list, inc: frozenset) -> dict:
+def exc_generator(lang: list, inc: frozenset) -> dict:
     """
-    This generates a dictionary of exclusions for a language with a given INC. The return is completely decided by the
+    This generates a dictionary of exclusions for a language with a given inc. The return is completely decided by the
     input. However, this is no long simply a book-keeping. I have removed premises that are persistently incoherent
     from being counted as a reason against. Before, every persistently incoherent set will a reason against any sentence
     not in the set. By definition, adding anything into a persistently incoherent set doesn't make the new set coherent.
@@ -394,13 +393,13 @@ def EXC_generator(lang: list, inc: frozenset) -> dict:
     dict
         a dictionary of exclusions. If \Gamma is incoherent, then for any \gamma in \Gamma, \Gamma - \gamma excludes
         \gamma. This dictionary maps the index of each sentence in the language to the set of sets of indexes of sentences
-        that exclude this sentence. E.g. EXC[2] = {{1},{3,4}}; this means that there are two and only two incoherent
+        that exclude this sentence. E.g. exc[2] = {{1},{3,4}}; this means that there are two and only two incoherent
         sets that contain the sentence indexe by 2, namely {1,2} and {2,3,4}
     """
-    exff = ExFF_sets(lang, inc)
+    exff = exff_sets(lang, inc)
     result = dict()
     for i in range(len(lang)):
-        against = list()
+        against = []
         for n in inc:
             if i in n and n - frozenset([i]) not in exff and n - frozenset([i]) != set():
                 against.append(n - frozenset([i]))
@@ -408,42 +407,42 @@ def EXC_generator(lang: list, inc: frozenset) -> dict:
     return result
 
 
-def StrangeImp(lang, imp, inc):
+def strange_imp(lang, imp, inc):
     # Some implications are weird in the sense that the premises and conclusion are jointly
-    # persistently in concsistent. We don't allow agents to use such IMP in a for-move.
-    strangeimp = list()
+    # persistently in concsistent. We don't allow agents to use such imp in a for-move.
+    strangeimp = []
     for i in imp:
-        if i[0] not in ExFF_sets(lang, inc):
-            if frozenset.union(i[0], frozenset([i[1]])) in ExFF_sets(lang, inc):
+        if i[0] not in exff_sets(lang, inc):
+            if frozenset.union(i[0], frozenset([i[1]])) in exff_sets(lang, inc):
                 strangeimp.append(i)
     return frozenset(strangeimp)
 
 
-def PossibleForMoves(lang: list, imp: frozenset, inc: frozenset):
-    formove = list()
-    strangeimp = list()#Some implications are weird in the sense that the premises and conclusion are jointly
-                       #persistently in concsistent. We don't allow agents to use such IMP in a for-move.
+def possible_for_moves(lang: list, imp: frozenset, inc: frozenset):
+    formove = []
+    strangeimp = []#Some implications are weird in the sense that the premises and conclusion are jointly
+                       #persistently in concsistent. We don't allow agents to use such imp in a for-move.
     for i in imp:
-        if frozenset.union(i[0], frozenset([i[1]])) in ExFF_sets(lang, inc):
+        if frozenset.union(i[0], frozenset([i[1]])) in exff_sets(lang, inc):
             strangeimp.append(i)
-    pool = imp - CO_generator(lang) - ExFF_generator(lang, inc) - frozenset(StrangeImp(lang, imp, inc))
+    pool = imp - co_generator(lang) - exff_generator(lang, inc) - frozenset(strange_imp(lang, imp, inc))
     for i in pool:
-        formove.append(MoveType(Prem = i[0], Val = 'reason for', Conc = i[1], MoveLabel = str(sorted({lang[i] for i in i[0]})) + ' entails ' + lang[i[1]]))
+        formove.append(MoveType(prem = i[0], val = 'reason for', conc = i[1], move_label = str(sorted({lang[i] for i in i[0]})) + ' entails ' + lang[i[1]]))
     return frozenset(formove)
 
 
-def CO_closure(language: list, imp: frozenset) -> frozenset:
-    return frozenset.union(imp, CO_generator(language))
+def co_closure(language: list, imp: frozenset) -> frozenset:
+    return frozenset.union(imp, co_generator(language))
 
 
-def RandomIMP_CO(language: list, size = 'random', chance = 1/2) -> frozenset:
-    return CO_closure(language, RandomIMP(language = language, chance = chance, size = size))
+def random_imp_co(language: list, size = 'random', chance = 1/2) -> frozenset:
+    return co_closure(language, random_imp(language = language, chance = chance, size = size))
 
 
-def Code_MSF(language, imp, inc):
+def code_msf(language, imp, inc):
     """
         This function generates a code for an MSF. It's intentionally made to asks for language, imp, inc as inputs,
-        instead of asking for an MSF, to avoid circularity, as we use it in initializing the .Code attribute of MSF.
+        instead of asking for an msf, to avoid circularity, as we use it in initializing the .code attribute of MSF.
 
         Parameters
         ----------
@@ -465,12 +464,12 @@ def Code_MSF(language, imp, inc):
 
     imp_code = str()
     inc_code = str()
-    for i in list(Possible_IMP_Generator(language)):
+    for i in list(possible_imp_generator(language)):
         if i in imp:
             imp_code = imp_code + '1'
         else:
             imp_code = imp_code + '0'
-    for i in list(Possible_INC_Generator(language)):
+    for i in list(possible_inc_generator(language)):
         if i in inc:
             inc_code = inc_code + '1'
         else:
@@ -478,7 +477,7 @@ def Code_MSF(language, imp, inc):
     return 'len'+str(len(language))+'imp'+str(int(imp_code, 2))+'inc'+str(int(inc_code, 2))
 
 
-def Decode_MSF(language, code):
+def decode_msf(language, code):
     """
     This function generates an MSF using a code for MSF.
 
@@ -504,10 +503,10 @@ def Decode_MSF(language, code):
     else:
         inc_code_int = int(code[code.find('inc') + 3:])
         imp_code_int = int(code[code.find('imp') + 3: code.find('inc')])
-        possible_imp = list(Possible_IMP_Generator(language))
-        possible_inc = list(Possible_INC_Generator(language))
-        imp = list()
-        inc = list()
+        possible_imp = list(possible_imp_generator(language))
+        possible_inc = list(possible_inc_generator(language))
+        imp = []
+        inc = []
         imp_code = format(imp_code_int, '0' + str(len(possible_imp)) + 'b')
         inc_code = format(inc_code_int, '0' + str(len(possible_inc)) + 'b')
         for i in range(len(possible_imp)):
@@ -519,15 +518,15 @@ def Decode_MSF(language, code):
         return MSF(language, frozenset(imp), frozenset(inc))
 
 
-def ExFF_generator(language: list, inc: frozenset) -> frozenset:
-    # This generates the list of implications required by ExFF given a list of implications (IMP) and a list of
-    # incoherences (INC).
-    # One may have the concern that adding this generated set to an IMP doesn't always make that set closed
-    # under ExFF. Perhaps, more requirements can be generated in the process of adding. That is not the case.
-    # The process of adding doesn't change INC. It only changes IMP. So adding this generated set to a given IMP,
-    # does make that IMP closed under ExFF relative to a INC.
-    exff_sets = list()
-    result = list()
+def exff_generator(language: list, inc: frozenset) -> frozenset:
+    # This generates the list of implications required by exff given a list of implications (imp) and a list of
+    # incoherences (inc).
+    # One may have the concern that adding this generated set to an imp doesn't always make that set closed
+    # under exff. Perhaps, more requirements can be generated in the process of adding. That is not the case.
+    # The process of adding doesn't change inc. It only changes imp. So adding this generated set to a given imp,
+    # does make that imp closed under exff relative to a inc.
+    exff_sets = []
+    result = []
     for gamma in inc:
         if math.pow(2, (len(language) - len(gamma))) <= len(inc):
             n = 0
@@ -543,27 +542,28 @@ def ExFF_generator(language: list, inc: frozenset) -> frozenset:
     return frozenset(result)
 
 
-def ExFF_checker(language: list, imp: frozenset, inc: frozenset):
-    # This function checks if a given a set of implications satisfy ExFF for a given set of incoherence in a given
+def exff_checker(language: list, imp: frozenset, inc: frozenset):
+    # This function checks if a given a set of implications satisfy exff for a given set of incoherence in a given
     # language.
-    return ExFF_generator(language, inc).issubset(imp)
+    return exff_generator(language, inc).issubset(imp)
 
 
-def ExFF_closure(language: list, imp: frozenset, inc: frozenset) -> frozenset:
-    return frozenset.union(imp, ExFF_generator(language, inc))
-
-def MSF_closure(language: list, imp: frozenset, inc: frozenset):
-    return MSF(L=language, IMP=ExFF_closure(language = language, imp=CO_closure(language=language, imp=imp), inc=inc),
-               INC=inc)
+def exff_closure(language: list, imp: frozenset, inc: frozenset) -> frozenset:
+    return frozenset.union(imp, exff_generator(language, inc))
 
 
-def RandomIMP_CO_ExFF(language: list, inc: frozenset, imp_size = 'random', imp_chance = 1/2) -> frozenset:
-    return ExFF_closure(language, RandomIMP_CO(language = language, size = imp_size, chance = imp_chance), inc)
+def msf_closure(language: list, imp: frozenset, inc: frozenset):
+    return MSF(lang=language, imp=exff_closure(language = language, imp=co_closure(language=language, imp=imp), inc=inc),
+               inc=inc)
 
 
-def RandomIMP_CO_ExFF_with_random_INC(language: list) -> frozenset:
-    # The current method used to generate a random IMP is by first randomly sampling from all possible IMPs
-    # and then add all ones required by CO and ExFF (and potentially other further requirements) to the sample.
+def random_imp_co_exff(language: list, inc: frozenset, imp_size = 'random', imp_chance = 1/2) -> frozenset:
+    return exff_closure(language, random_imp_co(language = language, size = imp_size, chance = imp_chance), inc)
+
+
+def random_imp_co_exff_with_random_inc(language: list) -> frozenset:
+    # The current method used to generate a random imp is by first randomly sampling from all possible imps
+    # and then add all ones required by CO and exff (and potentially other further requirements) to the sample.
     # An alternative way to do so is to first put in all required ones and then sample from the non-required ones.
     # I now think these two ways are equivalent. It's as if you are generating a binary number of the length of all
     # possible implications relations. Suppose that there are 60 possible ones in total and 36 of them are required.
@@ -572,30 +572,30 @@ def RandomIMP_CO_ExFF_with_random_INC(language: list) -> frozenset:
     # and then add 36 1's in front of them or you generate 60 digits and make the first 36 of them 1.
     # Another question is whether the current procedure I use to generate these digits are faithful. What I do now is
     # first generate how many ones are there and then pick where the ones are at. I think it works well.
-    return ExFF_closure(language, RandomIMP_CO(language), RandomINC(language))
+    return exff_closure(language, random_imp_co(language), random_inc(language))
 
 
-def all_IMP_CO_ExFF(language: list, inc: frozenset) -> frozenset:
-    # This function general all implications that satisfy CO and ExFF (given a INC) in a given langauge.
+def all_imp_co_exff(language: list, inc: frozenset) -> frozenset:
+    # This function general all implications that satisfy CO and exff (given a inc) in a given langauge.
     # Actually running it will almost certainly give us a memory error.
-    result = list()
+    result = []
     m = powerset(
-        Possible_IMP_Generator(language) - frozenset.union(CO_generator(language), ExFF_generator(language, inc)))
+        possible_imp_generator(language) - frozenset.union(co_generator(language), exff_generator(language, inc)))
     for x in m:
-        result.append(frozenset.union(m, frozenset.union(CO_generator(language), ExFF_generator(language, inc))))
+        result.append(frozenset.union(m, frozenset.union(co_generator(language), exff_generator(language, inc))))
     return frozenset(result)
 
 
-def PossibleAgainstMoves(lang, inc):
-    againstmove = list()
-    exc = EXC_generator(lang, inc)
+def possible_against_moves(lang, inc):
+    againstmove = []
+    exc = exc_generator(lang, inc)
     for i in range(len(lang)):
         for s in exc[i]:
             againstmove.append(MoveType(s, 'reason against', i, str(sorted({lang[n] for n in s})) + ' excludes ' + lang[i]))
     return frozenset(againstmove)
 
 
-def RandomMSF(language, imp_size = 'random', imp_chance = 1/2, inc_size = 'random', inc_chance = 1/2):
+def random_msf(language, imp_size = 'random', imp_chance = 1/2, inc_size = 'random', inc_chance = 1/2):
     """
     Generate a random msf according to parameters provided.
 
@@ -605,26 +605,26 @@ def RandomMSF(language, imp_size = 'random', imp_chance = 1/2, inc_size = 'rando
         A list of strings, each string is a sentence.
         e.g. ['a_0', 'a_1', 'a_2'] or ['red', 'Bob is nice', 'Yao is cool']
     imp_size : 'random' or int
-        This parameter controls the size of IMP directly.
-        However, the resulting IMP of the MSF may not be of the exact size spcified by this parameter.
-        It's kinda tricky. The current way of generating IMP is that we first randomly draw from implications that are not
-        required by CO. Then add all implications required by CO. Then add all implications required by ExFF.
+        This parameter controls the size of imp directly.
+        However, the resulting imp of the MSF may not be of the exact size spcified by this parameter.
+        It's kinda tricky. The current way of generating imp is that we first randomly draw from implications that are not
+        required by CO. Then add all implications required by CO. Then add all implications required by exff.
         This parameter sets the number of implications to be drawn from all potential implications that are not required
-        CO. However, the implications so drawn may overlap with implications required by ExFF. The size of IMP equals
-        imp_size + #CO required implications + #ExFF required implications - size of the overlap between drawn non-CO
-        implications and ExFF required implications.
+        CO. However, the implications so drawn may overlap with implications required by exff. The size of imp equals
+        imp_size + #CO required implications + #exff required implications - size of the overlap between drawn non-CO
+        implications and exff required implications.
         Also note that this parameter is always larger than the number of pragmatically significant implications. Pragmatically
         significant implications form a (in most cases, proposal) subset of all non-CO implications. As some non-CO implications
-        are also not pragmatically significant, e.g. they can be strange or required by ExFF (though not CO).
+        are also not pragmatically significant, e.g. they can be strange or required by exff (though not CO).
         This complication makes this parameter not as sharp as one may expect, since it doesn't just set the size.
-        It nevertheless controls the size of IMP roughly.
+        It nevertheless controls the size of imp roughly.
         One way to use this parameter is to first randomly generate some MSFs and see how many pragmatically significant
         implications those MSFs contain. Then set and tweak this parameter.
     imp_chance : int (0 to 1)
         the chance of any potential imp, i.e. a pair of a subset of the language and a sentence, being an actual
         imp. This parameter will only make a difference if imp_size is not 'random'.
     inc_size : 'random' or int
-        This parameter sets the size of INC directly. It doesn't have any complication as imp_size does.
+        This parameter sets the size of inc directly. It doesn't have any complication as imp_size does.
         Note, the entire language is always incoherent. If inc_size = 9, there will be eight proper subsets of the
         language get counted as incoherent, since the entire language is always incoherent.
     inc_chance : int (0 to 1)
@@ -636,45 +636,45 @@ def RandomMSF(language, imp_size = 'random', imp_chance = 1/2, inc_size = 'rando
         a frozenset set of sets of integers. It contains all subsets of the (indexes of the) enumerated language, except
         all singletons, since we assume singletons are always coherent.
     """
-    inc = RandomINC(language = language, size = inc_size, chance = inc_chance)
-    imp = RandomIMP_CO_ExFF(language = language, inc = inc, imp_size = imp_size, imp_chance = imp_chance)
+    inc = random_inc(language = language, size = inc_size, chance = inc_chance)
+    imp = random_imp_co_exff(language = language, inc = inc, imp_size = imp_size, imp_chance = imp_chance)
     return MSF(language, imp, inc)
 
 
-def SSMeaning(msf, object, valence = 'for'):
+def ss_meaning(msf, imp, valence = 'for'):
     # This is an implementation of Dan Kaplan's vee-function in his semantics for single succedent.
     # Note: when we calculate the vee-function, we consider all reasons, including the ones that are not pragmatically significant.
     # input msf is the msf we are operating in.
-    # input 'object' should be a list of implications. For example, it can be [([2,3,4],1), ([1,3,4],5)]
-    # or [([1,3,5], None), ([1,3,5], None)]. Formally, input 'object' should be a list of tuples.
+    # input 'imp' should be a list of implications. For example, it can be [([2,3,4],1), ([1,3,4],5)]
+    # or [([1,3,5], None), ([1,3,5], None)]. Formally, input 'imp' should be a list of tuples.
     # The first element of the tuple is a list of indexes for sentences, the second element is either a number (index)
     # or None. By making the consequent None, you effectively leave it empty.
     # valence specifies whether we are trying to apply vee-function to reason-for or reason-against. It must either be 'for'
     # or 'against'.
-    c = object[0][1]    # We first find out what the consequent of the implications are.
+    c = imp[0][1]    # We first find out what the consequent of the implications are.
                         # For the single-succedent system, all implications of the input set must have the same consequent.
-    result = list()
+    result = []
     finalresult = frozenset()
     display = ''
     if valence == 'for':
-        if all([p[1] == c for p in object]):    # Here we check if the succedent of all reasons in the input set are the same.
-            if c == None:
-                for p in object:
-                    count = list()
-                    for i in msf.IMP:
+        if all([p[1] == c for p in imp]):    # Here we check if the succedent of all reasons in the input set are the same.
+            if c is None:
+                for p in imp:
+                    count = []
+                    for i in msf.imp:
                         if frozenset(p[0]).issubset(i[0]):
                             count.append((i[0] - frozenset(p[0]), i[1]))
                     result.append(frozenset(count))
                 finalresult = frozenset.intersection(*result)
                 for i in finalresult:
                     display = display + str(list(i[0])) + '⊨' + str(i[1]) + ', '
-                print('Applying the vee-function to', object, 'as reasons-for gives the following set of (prima-facie) implications:')
+                print('Applying the vee-function to', imp, 'as reasons-for gives the following set of (prima-facie) implications:')
                 print('{' + display[:-2] + '}')
                 return finalresult
             else:
-                for p in object:
-                    count = list()
-                    for i in msf.IMP:
+                for p in imp:
+                    count = []
+                    for i in msf.imp:
                         if i[1] == c:
                             if frozenset(p[0]).issubset(i[0]):
                                 count.append((i[0] - frozenset(p[0]), None))
@@ -682,7 +682,7 @@ def SSMeaning(msf, object, valence = 'for'):
                 finalresult = frozenset.intersection(*result)
                 for i in finalresult:
                     display = display + str(list(i[0])) + '⊨' + str(i[1]) + ', '
-                print('Applying the vee-function to', object, 'as reasons-for gives the following set of (prima-facie) implications:')
+                print('Applying the vee-function to', imp, 'as reasons-for gives the following set of (prima-facie) implications:')
                 print('{' + display[:-2] + '}')
                 return finalresult
 
@@ -690,12 +690,12 @@ def SSMeaning(msf, object, valence = 'for'):
             print('For single succedent sysmtems, the second elements of ordered pairs in the input list must all be uniform'
                     'for the return to be none-empty.They can either all be None, or a particular sentence.')
     elif valence == 'against':
-        if all([p[1] == c for p in object]):    # Here we check if the succedent of all reasons in the input set are the same.
-            if c == None:
-                rawresult = list()
-                for p in object:
-                    count = list()
-                    for i in msf.INC:
+        if all([p[1] == c for p in imp]):    # Here we check if the succedent of all reasons in the input set are the same.
+            if c is None:
+                rawresult = []
+                for p in imp:
+                    count = []
+                    for i in msf.inc:
                         if frozenset(p[0]).issubset(i):
                             count.append(i - frozenset(p[0]))
                     rawresult.append(frozenset(count))
@@ -705,20 +705,20 @@ def SSMeaning(msf, object, valence = 'for'):
                         result.append((i-frozenset([j]), j))
                 for i in result:
                     display = display + str(list(i[0])) + '#' + str(i[1]) + ', '
-                print('Applying the vee-function to', object, 'as reasons-against gives the following set of (prima-facie) implications:')
+                print('Applying the vee-function to', imp, 'as reasons-against gives the following set of (prima-facie) implications:')
                 print('{' + display[:-2] + '}')
                 return result
             else:
-                for p in object:
-                    count = list()
-                    for i in msf.INC:
+                for p in imp:
+                    count = []
+                    for i in msf.inc:
                         if frozenset.union(frozenset(p[0]), frozenset([p[1]])).issubset(i):
                             count.append((i - frozenset.union(frozenset(p[0]), frozenset([p[1]])), None))
                     result.append(frozenset(count))
                 finalresult = frozenset.intersection(*result)
                 for i in finalresult:
                     display = display + str(list(i[0])) + '#' + str(i[1]) + ', '
-                print('Applying the vee-function to', object, ' as reasons-against gives the following set of (prima-facie) implications:')
+                print('Applying the vee-function to', imp, ' as reasons-against gives the following set of (prima-facie) implications:')
                 print('{' + display[:-2] + '}')
                 return finalresult
         else:

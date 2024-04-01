@@ -2,19 +2,16 @@
 """
 
 class Score:
-    def __init__(self, Subject, AC, RC, AE, RE):
-        self.Subject = Subject
-        self.AC = AC    #accept committed
-        self.RC = RC    #reject committed
-        self.AE = AE    #accept entitled
-        self.RE = RE    #reject entitled
+    def __init__(self, subject, ac, rc, ae, re):
+        self.subject = subject
+        self.ac = ac    #accept committed
+        self.rc = rc    #reject committed
+        self.ae = ae    #accept entitled
+        self.re = re    #reject entitled
 
 
 class ScoreSit:
-    def __init__(self, CL_Score, CR_Score):
-        self.CL = CL_Score
-        self.CR = CR_Score
-        self.CommonGround = frozenset.intersection(self.CL.AC, self.CR.AC)
-
-
-
+    def __init__(self, cl_score, cr_score):
+        self.cl = cl_score
+        self.cr = cr_score
+        self.common_ground = frozenset.intersection(self.cl.ac, self.cr.ac)
