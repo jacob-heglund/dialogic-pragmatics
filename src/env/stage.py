@@ -1,17 +1,15 @@
-"""defines the environment, the actions that can be taken by agents, and how those actions affect the environment
+"""defines the state of the environment at each time step
 """
 
-import random
-from prettytable import PrettyTable
 
-from utils.utils import stage_row, first_stage_row, agentswitch
+from utils.env_utils import get_prev_stages, switch_agents
 from utils.language_utils import exff_sets
 from env.score import Score, ScoreSit
 
 
 class Stage:
     def __init__(self, msf, turn_idx, agent, cl_inferential_theory, cr_inferential_theory, a_score_sit, target_move, prag_sig,
-                 prime_move, f_score_sit, last_stage, contro_set, suff_con):
+                 prime_move, f_score_sit, prev_stage, contro_set, suff_con):
         self.msf = msf
         self.turn_idx = turn_idx
         self.agent = agent
@@ -22,97 +20,75 @@ class Stage:
         self.prag_sig = prag_sig
         self.prime_move = prime_move
         self.f_score_sit = f_score_sit
-        self.last_stage = last_stage
+        self.prev_stage = prev_stage
         self.contro_set = contro_set
         self.suff_con = suff_con
-        self.available_moves = get_avail_moves(self)
+        self.available_moves = self._get_avail_moves(self)
 
-    def show(self):
-        if self.turn_idx == 0:
-            x = PrettyTable()
-            x.field_names = ['turn_idx', 'agent', 'target_num', 'prag_sig', 'Move', 'CL_ac', 'CL_rc', 'CL_ae', 'CL_re',
-                             'CR_ac', 'CR_rc', 'CR_ae', 'CR_re']
-            first_stage_row(x,self)
-            print(x)
+    def _get_avail_moves(self, stage):
+        # This function is used to compute all reasons available to the next mover at a given stage.
+        avail_against_move = []
+        avail_for_move = []
+        st = get_prev_stages(stage)+[stage]
+
+        #In this case, CL made a move in this stage and we should compute available moves for CR
+        if stage.agent == 'CL':
+            # We iterate through all against-moves (i.e. reason-againsts) in the msf of the stage.
+            # Each against-move will pass a series of tests before it's added to a list.
+            for m in stage.cr_inferential_theory.against_move:
+                # Given,the move (type) under consideration is a reason-against, we first make sure that this move is
+                # targeting something that CL (i.e. the opponent of the next mover CR) is entitled to.
+                # And this move doesn't use the conclusion of the initial proposal of CL.
+                if m.conc in stage.f_score_sit.cl.ae and st[0].prime_move.conc not in m.prem:
+                    # We make sure that this move doesn't use anything that CR is committed to reject as premise and
+                    # the target of this reason-against isn't something that CR is committed to accept.
+                    if frozenset.intersection(m.prem, stage.f_score_sit.cr.rc) == frozenset() and m.conc not in stage.f_score_sit.cr.ac:
+                        # We make sure that for every premise of this move, if CR has already committed to accept it by the
+                        # end of the current stage (recall that we are computing what CR can do at next stage), CR is entitled
+                        # to it. That is, making sure that CR isn't using any premise that he's not entitled.
+                        if frozenset.intersection(m.prem, stage.f_score_sit.cr.ac).issubset(stage.f_score_sit.cr.ae):
+                            # We make sure that this the union of CR's current ac and the premises of this move isn't
+                            # persistently incoherent. In this way, CR will never make a move that will put her into
+                            # persistently incoherent ac.
+                            if not frozenset.union(stage.f_score_sit.cr.ac, m.prem) in exff_sets(stage.msf.lang, stage.msf.inc):
+                                # The last test checks that CR hasn't used this reason-against in previous stages.
+                                if all([m != i.prime_move for i in get_prev_stages(stage)] + [m != stage.prime_move]):
+                                    # Once a move (type) passes all tests above, it's added to the list of available against
+                                    # moves.
+                                    avail_against_move.append(m)
+
+            for j in stage.cr_inferential_theory.for_move: # We do the same thing for for-moves.
+                if j.conc in stage.f_score_sit.cr.ac and j.conc not in stage.f_score_sit.cr.ae and st[0].prime_move.conc not in j.prem:
+                    if frozenset.intersection(j.prem, stage.f_score_sit.cr.rc) == frozenset() and j.conc not in stage.f_score_sit.cr.rc:
+                        if frozenset.intersection(j.prem, stage.f_score_sit.cr.ac).issubset(stage.f_score_sit.cr.ae):
+                            if not frozenset.union(stage.f_score_sit.cr.ac, j.prem, frozenset([j.conc])) in exff_sets(stage.msf.lang, stage.msf.inc):
+                                if all([j != i.prime_move for i in get_prev_stages(stage)] + [j != stage.prime_move]):
+                                    avail_for_move.append(j)
+
+            return {'agent': 'CR', 'for': frozenset(avail_for_move), 'against': frozenset(avail_against_move)}
+
         else:
-            x = PrettyTable()
-            x.field_names = ['turn_idx', 'agent', 'target_num', 'prag_sig', 'Move', 'CL_ac', 'CL_rc', 'CL_ae', 'CL_re',
-                             'CR_ac', 'CR_rc', 'CR_ae', 'CR_re']
-            stage_row(x,self)
-            print(x)
+            # In this case, CR made a move in this stage and we should compute available moves for CL.
+            # The way it's checked is exactly the same as last case.
+            for m in stage.cl_inferential_theory.against_move:
+                if m.conc in stage.f_score_sit.cr.ae and st[0].prime_move.conc not in m.prem:
+                    if frozenset.intersection(m.prem, stage.f_score_sit.cl.rc) == frozenset() and m.conc not in stage.f_score_sit.cl.ac:
+                        if frozenset.intersection(m.prem, stage.f_score_sit.cl.ac).issubset(stage.f_score_sit.cl.ae):
+                            if not frozenset.union(stage.f_score_sit.cl.ac, m.prem) in exff_sets(stage.msf.lang, stage.msf.inc):
+                                if all([m != i.prime_move for i in get_prev_stages(stage)] + [m != stage.prime_move]):
+                                    avail_against_move.append(m)
+
+            for j in stage.cl_inferential_theory.for_move:
+                if j.conc in stage.f_score_sit.cl.ac and j.conc not in stage.f_score_sit.cl.ae and st[0].prime_move.conc not in j.prem:
+                    if frozenset.intersection(j.prem, stage.f_score_sit.cl.rc) == frozenset() and j.conc not in stage.f_score_sit.cl.rc:
+                        if frozenset.intersection(j.prem, stage.f_score_sit.cl.ac).issubset(stage.f_score_sit.cl.ae):
+                            if not frozenset.union(stage.f_score_sit.cl.ac, j.prem, frozenset([j.conc])) in exff_sets(stage.msf.lang, stage.msf.inc):
+                                if all([j != i.prime_move for i in get_prev_stages(stage)] + [j != stage.prime_move]):
+                                    avail_for_move.append(j)
+            return {'agent': 'CL','for': frozenset(avail_for_move), 'against': frozenset(avail_against_move)}
 
 
-def get_prev_stages(stage):
-    # This gives the list of all previous stages, given a stage, in increasing order of turn_idx, i.e. the initial stage
-    # has index 0, and so on.
-    prev_stages = []
-    s = stage
-    while s.last_stage is not None:
-        prev_stages.append(s.last_stage)
-        s = s.last_stage
-    prev_stages.reverse()
-    return prev_stages
-
-
-def get_avail_moves(stage):
-    #This function is used to compute all reasons available to the next mover at a given stage.
-    avail_against_move = []
-    avail_for_move = []
-    st = get_prev_stages(stage)+[stage]
-    if stage.agent == 'CL': #In this case, CL made a move in this stage and we should compute available moves for CR
-        # We iterate through all against-moves (i.e. reason-againsts) in the msf of the stage.
-        # Each against-move will pass a series of tests before it's added to a list.
-        for m in stage.cr_inferential_theory.against_move:
-            # Given,the move (type) under consideration is a reason-against, we first make sure that this move is
-            # targeting something that CL (i.e. the opponent of the next mover CR) is entitled to.
-            # And this move doesn't use the conclusion of the initial proposal of CL.
-            if m.conc in stage.f_score_sit.cl.ae and st[0].prime_move.conc not in m.prem:
-                # We make sure that this move doesn't use anything that CR is committed to reject as premise and
-                # the target of this reason-against isn't something that CR is committed to accept.
-                if frozenset.intersection(m.prem, stage.f_score_sit.cr.rc) == frozenset() and m.conc not in stage.f_score_sit.cr.ac:
-                    # We make sure that for every premise of this move, if CR has already committed to accept it by the
-                    # end of the current stage (recall that we are computing what CR can do at next stage), CR is entitled
-                    # to it. That is, making sure that CR isn't using any premise that he's not entitled.
-                    if frozenset.intersection(m.prem, stage.f_score_sit.cr.ac).issubset(stage.f_score_sit.cr.ae):
-                        # We make sure that this the union of CR's current ac and the premises of this move isn't
-                        # persistently incoherent. In this way, CR will never make a move that will put her into
-                        # persistently incoherent ac.
-                        if not frozenset.union(stage.f_score_sit.cr.ac, m.prem) in exff_sets(stage.msf.lang, stage.msf.inc):
-                            # The last test checks that CR hasn't used this reason-against in previous stages.
-                            if all([m != i.prime_move for i in get_prev_stages(stage)] + [m != stage.prime_move]):
-                                # Once a move (type) passes all tests above, it's added to the list of available against
-                                # moves.
-                                avail_against_move.append(m)
-        for j in stage.cr_inferential_theory.for_move: # We do the same thing for for-moves.
-            if j.conc in stage.f_score_sit.cr.ac and j.conc not in stage.f_score_sit.cr.ae and st[0].prime_move.conc not in j.prem:
-                if frozenset.intersection(j.prem, stage.f_score_sit.cr.rc) == frozenset() and j.conc not in stage.f_score_sit.cr.rc:
-                    if frozenset.intersection(j.prem, stage.f_score_sit.cr.ac).issubset(stage.f_score_sit.cr.ae):
-                        if not frozenset.union(stage.f_score_sit.cr.ac, j.prem, frozenset([j.conc])) in exff_sets(stage.msf.lang, stage.msf.inc):
-                            if all([j != i.prime_move for i in get_prev_stages(stage)] + [j != stage.prime_move]):
-                                avail_for_move.append(j)
-        return {'agent': 'CR', 'for': frozenset(avail_for_move), 'against': frozenset(avail_against_move)}
-    else:
-        # In this case, CR made a move in this stage and we should compute available moves for CL.
-        # The way it's checked is exactly the same as last case.
-        for m in stage.cl_inferential_theory.against_move:
-            if m.conc in stage.f_score_sit.cr.ae and st[0].prime_move.conc not in m.prem:
-                if frozenset.intersection(m.prem, stage.f_score_sit.cl.rc) == frozenset() and m.conc not in stage.f_score_sit.cl.ac:
-                    if frozenset.intersection(m.prem, stage.f_score_sit.cl.ac).issubset(stage.f_score_sit.cl.ae):
-                        if not frozenset.union(stage.f_score_sit.cl.ac, m.prem) in exff_sets(stage.msf.lang, stage.msf.inc):
-                            if all([m != i.prime_move for i in get_prev_stages(stage)] + [m != stage.prime_move]):
-                                avail_against_move.append(m)
-        for j in stage.cl_inferential_theory.for_move:
-            if j.conc in stage.f_score_sit.cl.ac and j.conc not in stage.f_score_sit.cl.ae and st[0].prime_move.conc not in j.prem:
-                if frozenset.intersection(j.prem, stage.f_score_sit.cl.rc) == frozenset() and j.conc not in stage.f_score_sit.cl.rc:
-                    if frozenset.intersection(j.prem, stage.f_score_sit.cl.ac).issubset(stage.f_score_sit.cl.ae):
-                        if not frozenset.union(stage.f_score_sit.cl.ac, j.prem, frozenset([j.conc])) in exff_sets(stage.msf.lang, stage.msf.inc):
-                            if all([j != i.prime_move for i in get_prev_stages(stage)] + [j != stage.prime_move]):
-                                avail_for_move.append(j)
-        return {'agent': 'CL','for': frozenset(avail_for_move), 'against': frozenset(avail_against_move)}
-
-
-
-def initial_next_stage(last_stage, target_stage, prag_sig, move):
+def initial_next_stage(prev_stage, target_stage, prag_sig, move):
     """
     Return next stage, which is equivalent to making a move, requiring specification of the current stage and what move
     is to be made. This is perhaps the most important function in this program.
@@ -120,7 +96,7 @@ def initial_next_stage(last_stage, target_stage, prag_sig, move):
     as inputs, which makes it almost impossible to run manually. Instead, this function does the hardwork of making moves.
     Other functions intending to be called, requiring less demanding inputs, are defined using this function.
 
-    Notice, since we build last_stage as an attribute of a stage. When we know what the last stage of a stage is, we
+    Notice, since we build prev_stage as an attribute of a stage. When we know what the last stage of a stage is, we
     actually have access to all previous stages. This feature is important for the operation of this function.
 
     This function requires inputs of what the last stage is, what the target stage is, what the pragmatic
@@ -128,7 +104,7 @@ def initial_next_stage(last_stage, target_stage, prag_sig, move):
 
     Parameters
     ----------
-    last_stage : Stage
+    prev_stage : Stage
         An object of class Stage, namely the stage right before the one to be generated by this function.
     target_stage : Stage
         An object of class Stage, namely the stage targeted by the move being made.
@@ -142,55 +118,55 @@ def initial_next_stage(last_stage, target_stage, prag_sig, move):
     Stage
         The next stage in which the move specified in the input is made.
     """
-    if last_stage.agent == 'CL' and move not in last_stage.cr_inferential_theory.for_move and move not in last_stage.cr_inferential_theory.against_move:
+    if prev_stage.agent == 'CL' and move not in prev_stage.cr_inferential_theory.for_move and move not in prev_stage.cr_inferential_theory.against_move:
         print('Error: Attempted move is not in CL\'s Inferential Theory.')
-    if last_stage.agent == 'CR' and move not in last_stage.cl_inferential_theory.for_move and move not in last_stage.cl_inferential_theory.against_move:
+    if prev_stage.agent == 'CR' and move not in prev_stage.cl_inferential_theory.for_move and move not in prev_stage.cl_inferential_theory.against_move:
         print('Error: Attempted move is not in CR\'s Inferential Theory.')
 
-    frame = last_stage.msf
-    a = agentswitch(last_stage.agent)
+    frame = prev_stage.msf
+    a = switch_agents(prev_stage.agent)
     if move.val == 'reason against': # For the case where the valence of next move is reason-against.
         # To simplify the scoring process, I keep a list of controversial sentences.
         # This step updates the set of controversial claims.
-        controv = frozenset.union(last_stage.contro_set, frozenset([move.conc]))
+        controv = frozenset.union(prev_stage.contro_set, frozenset([move.conc]))
         # The next four lines update the sufficient conditions for scoring.
         scon = []
         for i in move.prem:
             scon.append(('A', None, 'A', i))
-        suff_con = last_stage.suff_con + [('A', move.prem, 'R', move.conc)] + scon
+        suff_con = prev_stage.suff_con + [('A', move.prem, 'R', move.conc)] + scon
 
     else:   # This is for the case where the valence of next move is reason-for.
-        controv = frozenset.union(last_stage.contro_set, frozenset([move.conc]))
+        controv = frozenset.union(prev_stage.contro_set, frozenset([move.conc]))
         scon = []
         for i in move.prem:
             scon.append(('A', None, 'A', i))
-        suff_con = last_stage.suff_con + [('A', move.prem, 'A', move.conc)] + scon
+        suff_con = prev_stage.suff_con + [('A', move.prem, 'A', move.conc)] + scon
 
     # The following block updates the commitments of CL and CR in different cases.
     # Updating commitments is a very simple process that has nothing to do with entitlements.
     if a == 'CL':
         if move.val == 'reason against':
-            cl_ac = frozenset.union(last_stage.f_score_sit.cl.ac, move.prem)
-            cl_rc = frozenset.union(last_stage.f_score_sit.cl.rc, frozenset([move.conc]))
+            cl_ac = frozenset.union(prev_stage.f_score_sit.cl.ac, move.prem)
+            cl_rc = frozenset.union(prev_stage.f_score_sit.cl.rc, frozenset([move.conc]))
         else:
-            cl_ac = frozenset.union(last_stage.f_score_sit.cl.ac, move.prem, frozenset([move.conc]))
-            cl_rc = last_stage.f_score_sit.cl.rc
-        cr_ac = last_stage.f_score_sit.cr.ac
-        cr_rc = last_stage.f_score_sit.cr.rc
+            cl_ac = frozenset.union(prev_stage.f_score_sit.cl.ac, move.prem, frozenset([move.conc]))
+            cl_rc = prev_stage.f_score_sit.cl.rc
+        cr_ac = prev_stage.f_score_sit.cr.ac
+        cr_rc = prev_stage.f_score_sit.cr.rc
     else:
         if move.val == 'reason against':
-            cr_ac = frozenset.union(last_stage.f_score_sit.cr.ac, move.prem)
-            cr_rc = frozenset.union(last_stage.f_score_sit.cr.rc, frozenset([move.conc]))
+            cr_ac = frozenset.union(prev_stage.f_score_sit.cr.ac, move.prem)
+            cr_rc = frozenset.union(prev_stage.f_score_sit.cr.rc, frozenset([move.conc]))
         else:
-            cr_ac = frozenset.union(last_stage.f_score_sit.cr.ac, move.prem, frozenset([move.conc]))
-            cr_rc = last_stage.f_score_sit.cr.rc
-        cl_ac = last_stage.f_score_sit.cl.ac
-        cl_rc = last_stage.f_score_sit.cl.rc
+            cr_ac = frozenset.union(prev_stage.f_score_sit.cr.ac, move.prem, frozenset([move.conc]))
+            cr_rc = prev_stage.f_score_sit.cr.rc
+        cl_ac = prev_stage.f_score_sit.cl.ac
+        cl_rc = prev_stage.f_score_sit.cl.rc
 
         #Now we are done with commitments, sufficient conditions and controversial statements. Time for entitlements!
 
-# We first initiate lists of potential entitlements of CL and CR. E.g. p_cl_ae intended to be the set of sentences that
-# the CL is potentially entitled to accept. It starts as the set of sentences CL is committed to accept.
+    # We first initiate lists of potential entitlements of CL and CR. E.g. p_cl_ae intended to be the set of sentences that
+    # the CL is potentially entitled to accept. It starts as the set of sentences CL is committed to accept.
     p_cl_ae = cl_ac
     p_cl_re = cl_rc
     p_cr_ae = cr_ac
@@ -199,6 +175,7 @@ def initial_next_stage(last_stage, target_stage, prag_sig, move):
     cl_re = []
     cr_ae = []
     cr_re = []
+
     # First Step: make agents entitled to accept all noncontroversial sentences that they are committed to accept.
     # A sentence is not controversial if it has never appeared on the right of a turntile. This is just to simplify
     # the process of keeping track of entitlement. The tracking process still works without it, albeit slower.
@@ -208,6 +185,7 @@ def initial_next_stage(last_stage, target_stage, prag_sig, move):
     for i in cr_ac:
         if i not in controv:
             cr_ae.append(i)
+
     # Second Step: Iterate through all sufficient conditions accumulated so far from the latest to earliest.
     # Basically, we iterate until we find a sufficient condition, whose premises are met and conclusion has yet been
     # actualized. We then actualize it and redo the interation from the beginning. We do so until there is no further
@@ -260,10 +238,13 @@ def initial_next_stage(last_stage, target_stage, prag_sig, move):
     # Creating final score
     finalscore = ScoreSit(cl_score = cl, cr_score = cr)
 
-    return Stage(msf = frame, turn_idx = last_stage.turn_idx + 1, agent = a, cl_inferential_theory = last_stage.cl_inferential_theory,
-                 cr_inferential_theory = last_stage.cr_inferential_theory, a_score_sit = last_stage.f_score_sit,
-                 target_move = target_stage, prag_sig = prag_sig, prime_move = move, f_score_sit = finalscore,
-                 last_stage=last_stage, contro_set = controv, suff_con = suff_con)
+    next_stage = Stage(msf = frame, turn_idx = prev_stage.turn_idx + 1, agent = a, cl_inferential_theory = prev_stage.cl_inferential_theory,
+                 cr_inferential_theory = prev_stage.cr_inferential_theory, a_score_sit = prev_stage.f_score_sit,
+                 target_move = target_stage, prag_sig = prag_sig, prime_move=move, f_score_sit = finalscore,
+                 prev_stage=prev_stage, contro_set = controv, suff_con = suff_con)
+
+    return next_stage
+
 
 def initial_next_stage_2(stage, prime):
     # This is the second part of initial_next_stage. Most parameters required by initial_next_stage can be inferred from the
@@ -305,17 +286,17 @@ def initial_next_stage_2(stage, prime):
                 target_stage = None
                 prag_sig = None
 
-    return initial_next_stage(last_stage = stage, target_stage = target_stage, prag_sig = prag_sig, move = prime)
+    return initial_next_stage(prev_stage = stage, target_stage = target_stage, prag_sig = prag_sig, move = prime)
 
 
-def manual_next_stage(last_stage, target_stage, prag_sig, proposal, val):
+def manual_next_stage(prev_stage, target_stage, prag_sig, proposal, val):
     '''
     Generate next stage with more friendly, albeit still not friendly enough, inputs. Instead of inputting an object of
     class MoveType, you only need to put in a proposal and its valence.
 
     Parameters
     ----------
-    last_stage : Stage
+    prev_stage : Stage
         An object of class Stage, namely the stage right before the one to be generated by this function.
     target_stage : Stage
         An object of class Stage, namely the stage targeted by the move being made.
@@ -336,155 +317,55 @@ def manual_next_stage(last_stage, target_stage, prag_sig, proposal, val):
     Stage
         The next stage in which the move specified in the input is made.
     '''
-    agent = agentswitch(last_stage.agent)
+    agent = switch_agents(prev_stage.agent)
     prime = None
     if val == 'reason against':
-        for m in last_stage.msf.against_move:
+        for m in prev_stage.msf.against_move:
             if m.prem == proposal[0] and m.conc == proposal[1] and m.val == 'reason against':
                 prime = m
                 break
     else:
-        for m in last_stage.msf.for_move:
+        for m in prev_stage.msf.for_move:
             if m.prem == proposal[0] and m.conc == proposal[1] and m.val == 'reason for':
                 prime = m
                 break
     if prime is None:
         print('The proposed next move is not in the given MSF.')
-    elif agent == 'CL' and prime not in last_stage.cl_inferential_theory.for_move and prime not in last_stage.cl_inferential_theory.against_move:
+    elif agent == 'CL' and prime not in prev_stage.cl_inferential_theory.for_move and prime not in prev_stage.cl_inferential_theory.against_move:
         print('The proposed next move is not in the InferentialTheory of CL, who is the next agent to make a move.')
-    elif agent == 'CR' and prime not in last_stage.cr_inferential_theory.for_move and prime not in last_stage.cr_inferential_theory.against_move:
+    elif agent == 'CR' and prime not in prev_stage.cr_inferential_theory.for_move and prime not in prev_stage.cr_inferential_theory.against_move:
         print('The proposed next move is not in the InferentialTheory of CR, who is the next agent to make a move.')
     else:
-        return initial_next_stage(last_stage, target_stage, prag_sig, prime)
+        return initial_next_stage(prev_stage, target_stage, prag_sig, prime)
 
-def manual_next_stage_2(last_stage, target_stage, prag_sig, premise, val, conclusion):
-    frame = last_stage.msf
+
+def manual_next_stage_2(prev_stage, target_stage, prag_sig, premise, val, conclusion):
+    frame = prev_stage.msf
     proposal = (frozenset([frame.lang.index(s) for s in premise]), frame.lang.index(conclusion))
-    return manual_next_stage(last_stage = last_stage, target_stage = target_stage, prag_sig = prag_sig, proposal = proposal,
+    return manual_next_stage(prev_stage = prev_stage, target_stage = target_stage, prag_sig = prag_sig, proposal = proposal,
                            val = val)
 
-def manual_next_stage_infer(last_stage, proposal, val):
-    agent = agentswitch(last_stage.agent)
+
+def manual_next_stage_infer(prev_stage, proposal, val):
+    agent = switch_agents(prev_stage.agent)
     prime = None
     if val == 'reason against':
-        for m in last_stage.msf.against_move:
+        for m in prev_stage.msf.against_move:
             if m.prem == proposal[0] and m.conc == proposal[1] and m.val == 'reason against':
                 prime = m
                 break
     else:
-        for m in last_stage.msf.for_move:
+        for m in prev_stage.msf.for_move:
             if m.prem == proposal[0] and m.conc == proposal[1] and m.val == 'reason for':
                 prime = m
                 break
     if prime is None:
         print('The proposed next move is not in the given MSF.')
-    elif agent == 'CL' and prime not in last_stage.cl_inferential_theory.for_move and prime not in last_stage.cl_inferential_theory.against_move:
+    elif agent == 'CL' and prime not in prev_stage.cl_inferential_theory.for_move and prime not in prev_stage.cl_inferential_theory.against_move:
         print('The proposed next move is not in the InferentialTheory of CL, who is the next agent to make a move.')
-    elif agent == 'CR' and prime not in last_stage.cr_inferential_theory.for_move and prime not in last_stage.cr_inferential_theory.against_move:
+    elif agent == 'CR' and prime not in prev_stage.cr_inferential_theory.for_move and prime not in prev_stage.cr_inferential_theory.against_move:
         print('The proposed next move is not in the InferentialTheory of CR, who is the next agent to make a move.')
     else:
-        return initial_next_stage_2(last_stage, prime)
+        return initial_next_stage_2(prev_stage, prime)
 
 
-def random_next_stage(stage):
-    moves = frozenset.union(stage.available_moves['for'], stage.available_moves['against'])
-    prime = random.sample(moves, 1)[0]
-    return initial_next_stage_2(stage = stage, prime = prime)
-
-
-def new_commitment(move, last_stage):
-    #Computing what the move is grossly adding.
-    if move.val == 'reason for':
-        gross_new_ac = frozenset.union(move.prem, frozenset([move.conc]))
-        gross_new_rc = frozenset()
-    if move.val == 'reason against':
-        gross_new_ac = move.prem
-        gross_new_rc = frozenset([move.conc])
-
-    #Computing what the move's net new commitments.
-    if last_stage.agent == 'CL':
-        new_ac = gross_new_ac - last_stage.f_score_sit.cr.ac
-        new_rc = gross_new_rc - last_stage.f_score_sit.cr.rc
-
-    if last_stage.agent == 'CR':
-        new_ac = gross_new_ac - last_stage.f_score_sit.cl.ac
-        new_rc = gross_new_rc - last_stage.f_score_sit.cl.rc
-
-    return (new_ac, new_rc)
-
-
-def minimize_ac_next_stage(stage):
-    moves = frozenset.union(stage.available_moves['for'], stage.available_moves['against'])
-    lst_new_ac_length = set()
-    pool = []
-    for i in moves:
-        lst_new_ac_length.add(len(new_commitment(i, stage)[0]))
-    min_new_ac_length = min(lst_new_ac_length)
-    for i in moves:
-        if len(new_commitment(i,stage)[0]) == min_new_ac_length:
-            pool.append(i)
-
-    prime = random.sample(frozenset(pool), 1)[0]
-
-    return initial_next_stage_2(stage = stage, prime = prime)
-
-
-
-def next_stage(last_stage, cl_strategy, cr_strategy):
-    if last_stage.agent == 'CL':
-        if cr_strategy == 'random':
-            return random_next_stage(stage = last_stage)
-        elif cr_strategy == 'minimize_ac':
-            return minimize_ac_next_stage(stage = last_stage)
-        elif cr_strategy == 'one_step_ahead':
-            return one_step_ahead_next_stage(stage = last_stage)
-        else: print('Error: Currently, CL and CR have only three strategies: \'random\', \'minimize_ac\' and \'one_step_ahead\'.')
-
-    elif last_stage.agent == 'CR':
-        if cl_strategy == 'random':
-            return random_next_stage(stage = last_stage)
-        elif cl_strategy == 'minimize_ac':
-            return minimize_ac_next_stage(stage = last_stage)
-        elif cl_strategy == 'one_step_ahead':
-            return one_step_ahead_next_stage(stage = last_stage)
-        else:
-            print('Error: Currently, CL and CR have only three strategies: \'random\', \'minimize_ac\' and \'one_step_ahead\'.')
-
-
-
-def one_step_ahead_next_stage(stage):
-    moves = frozenset.union(stage.available_moves['for'], stage.available_moves['against'])
-    pool = []
-
-    for i in moves:
-        #Case for CL
-        if stage.agent == 'CL':
-            if verdict(initial_next_stage_2(stage = stage, prime = i)) == 'fail':
-                pool.append(i)
-        #Case for CR
-        else:
-            if verdict(initial_next_stage_2(stage = stage, prime = i)) == 'sustain':
-                pool.append(i)
-
-    if len(pool) != 0:
-        prime = random.sample(frozenset(pool), 1)[0]
-    else:
-        prime = random.sample(frozenset(moves), 1)[0]
-
-    return initial_next_stage_2(stage = stage, prime = prime)
-
-
-
-def verdict(stage):     # Notice this function takes a single stage as an argument. You can use it to check the verdict
-                        # at any given stage, if you want.
-    proposal = get_prev_stages(stage)[0].prime_move
-    if proposal.val == 'reason against':
-        if proposal.conc in stage.f_score_sit.cl.re:
-            return 'sustain'
-        else:
-            return 'fail'
-    elif proposal.val == 'reason for':
-        if proposal.conc in stage.f_score_sit.cl.ae:
-            return 'sustain'
-        else:
-            return 'fail'

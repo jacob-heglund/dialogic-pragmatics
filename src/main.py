@@ -1,4 +1,4 @@
-"""Dialogic Pragmatics Inquiry Generator
+"""Dialogic Pragmatics Environment Generator
 
 This script allows the user to generate random material semantics frames and then generate inquiries of dialogic
 pragmatic games from any material semantic frames.

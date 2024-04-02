@@ -63,8 +63,8 @@ class MSF:
         self.against_move = self._get_possible_against_moves(self.lang, inc)
         self.strange_imp = self._get_strange_imp(self.lang, self.imp, self.inc)
         self.code = self._code_msf(self.lang, self.imp, self.inc)
-        self.n_reasons = self._find_n_reasons(language = self.lang, for_moves = self.for_move, against_moves = self.against_move)
-        self.reason_ratio = self._reason_ratio_calculator(language = self.lang, for_moves= self.for_move, against_moves = self.against_move)
+        self.n_reasons = self._get_n_reasons(language=self.lang, for_moves=self.for_move, against_moves=self.against_move)
+        self.reason_ratio = self._reason_ratio_calculator(language = self.lang, for_moves=self.for_move, against_moves=self.against_move)
         self.move_dict = self._move_dict_generator(self)
 
     def show(self):
@@ -286,7 +286,7 @@ class MSF:
                 inc_code = inc_code + '0'
         return 'len'+str(len(language))+'imp'+str(int(imp_code, 2))+'inc'+str(int(inc_code, 2))
 
-    def _find_n_reasons(self, language, for_moves, against_moves):
+    def _get_n_reasons(self, language, for_moves, against_moves):
         n_reason_for = [0]*len(language)
         n_reason_against = [0]*len(language)
         for i in for_moves:

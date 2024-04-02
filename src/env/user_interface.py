@@ -2,37 +2,72 @@
 """
 import ast
 
-from agents.msf import random_msf
-from agents.inferential_theory import random_inferential_theory_generator
-from agents.agent import Agent
 from env.episode_runners import run_episode, run_episode_from_stage
 from env.stage import manual_next_stage_infer
 
 
+class EmptyClass(object):
+    pass
+
+
 class UserInterface():
-    def __init__(self, lang) -> None:
+    def __init__(self, lang, interactive=False) -> None:
         """
         defines user interface for DP1
+
+        goal (str): Defines the moves made by agents in the dialogue. Defaults to 'argue_for'.
         """
 
-        self.lang = lang
+        # TODO these should be turned into a config file / args
+        self.args = EmptyClass()
+        self.args.lang = lang
 
-        print('Welcome to the Dialogic Pragmatics Inquiry Interface!')
-        print()
-        run_type = input("Use default parameters? (y/n): ").strip().lower()
-        if run_type == "n":
-            self.run_env_manual()
-        else:
+        # agent setup
+        # cl agent
+        self.args.cl_policy_name = "one_step_ahead"
+        self.args.cl_inferential_theory_name = "random"
+
+        # cr agent
+        self.args.cr_policy_name = "minimize_ac"
+        self.args.cr_inferential_theory_name = "random"
+
+        # env setup
+        self.args.target = "random"
+        self.args.proposal = "undeclared"
+        self.args.goal = "argue_for"
+
+
+        if interactive == False:
             self.run_env()
+
+        else:
+            print('Welcome to the Dialogic Pragmatics Inquiry Interface!')
+            print()
+            run_type = input("Use default parameters? (y/n): ").strip().lower()
+            if run_type == "n":
+                self.run_env_manual()
+            else:
+                self.run_env_interactive()
 
     def run_env(self) -> None:
         # define a single msf shared by both agents
-        msf = random_msf(language = self.lang)
 
+        # in standard RL we would write "for n in range(n_episodes)", but we're just 1 episode runs for now
+        env = run_episode(self.args)
+
+        print()
+        env.show()
+        print()
+
+    def run_env_interactive(self) -> None:
+        # define a single msf shared by both agents
+        #TODO this should probably get pushed into episode_runners or the env itself
+        msf = random_msf(language = self.lang)
         cl_agent = Agent(msf, policy_name="one_step_ahead", inferential_theory_name="default")
         cr_agent = Agent(msf, policy_name="minimize_ac", inferential_theory_name="default")
 
-        ep = run_episode(msf, cl_agent, cr_agent, target='random', proposal='undeclared')
+        # in standard RL we would write "for t in n_episodes here", but we're just doing a 1 episode version for now
+        ep = run_episode(target='random', proposal='undeclared')
 
         print()
         ep.show()
@@ -42,13 +77,13 @@ class UserInterface():
             if input('Walk through inquiry stage by stage? (y/n): ').strip().lower() != 'n':
                 take_input = True
                 i = 0
-                while i < len(ep.list_of_stages):
+                while i < len(ep.stage_list):
                     print()
                     print('Stage', i, ':')
                     print()
-                    ep.view_stage(stage=i)
+                    ep.view_stage(stage_idx=i)
 
-                    if i+1 == len(ep.list_of_stages):
+                    if i+1 == len(ep.stage_list):
                         print()
                         print('End of inquiry.')
 
@@ -75,7 +110,7 @@ class UserInterface():
             else:
                 stage_num = int(input('Please enter the stage number you want to rerun from (i.e., the earliest stage that you would like to be different): '))
 
-            agent = ep.list_of_stages[stage_num].agent
+            agent = ep.stage_list[stage_num].agent
 
             manual_next = input('Would you like to specify a next move for ' + agent + '? (y/n): ')
 
@@ -97,20 +132,20 @@ class UserInterface():
 
                     proposal = (frozenset(ast.literal_eval(prem_string)), int(conc_string))
 
-                    last_stage = ep.list_of_stages[stage_num-1]
+                    prev_stage = ep.stage_list[stage_num-1]
 
-                    next_stage = manual_next_stage_infer(last_stage, proposal, val)
+                    next_stage = manual_next_stage_infer(prev_stage, proposal, val)
 
                     #target_num = int(input('Please enter the stage number that this move targets (e.g., the stage whose proposal it challenges) : '))
-                    #target_stage = ep.list_of_stages[target_num]
+                    #target_stage = ep.stage_list[target_num]
 
                     #prag_sig = input("Please enter the pragmatic significance of this move. Options are 'premise challenge' or 'conclusion challenge': ").strip().lower()
 
-                    #next_stage = manual_next_stage(last_stage, target_stage, prag_sig, proposal, val)
+                    #next_stage = manual_next_stage(prev_stage, target_stage, prag_sig, proposal, val)
             else:
                 next_stage = None
 
-            inq = run_episode_from_stage(inq, stage_num, next_stage)
+            ep = run_episode_from_stage(ep, stage_num, next_stage)
             print()
             ep.show_full_table()
             print()
@@ -118,9 +153,13 @@ class UserInterface():
         if input('Export inferential theories? (y/n): ').strip().lower() == 'y':
             cl_filename = input("Enter filename for CL's inferential theory: ").strip()
             cr_filename = input("Enter filename for CR's inferential theory: ").strip()
-            cl_inferential_theory.export(filename=cl_filename)
-            cr_inferential_theory.export(filename=cr_filename)
+            cl_agent.inferential_theory.export(filename=cl_filename)
+            cr_agent.inferential_theory.export(filename=cr_filename)
 
+
+
+"""
+    This is definitely broken after all the changes I made
     def run_env_manual(self) -> None:
         msf = random_msf(language = self.lang)
 
@@ -205,5 +244,6 @@ class UserInterface():
                 print('Invalid input!')
                 print("The following agent strategies are available: 'random', 'minimize_ac', and 'one_step_ahead'.")
 
-        inq = run_episode(frame=msf, target=target, proposal=proposal, cl_strategy=cl_strat, cr_strategy=cr_strat, cl_inferential_theory=cl_inferential_theory, cr_inferential_theory=cr_inferential_theory)
+        ep = run_episode(frame=msf, target=target, proposal=proposal, cl_strategy=cl_strat, cr_strategy=cr_strat, cl_inferential_theory=cl_inferential_theory, cr_inferential_theory=cr_inferential_theory)
 
+"""

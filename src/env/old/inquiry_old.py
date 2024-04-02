@@ -5,16 +5,16 @@
 from prettytable import PrettyTable
 from utils.utils import stage_row, first_stage_row, wrap_list
 from agents.inferential_theory import InferentialTheory
-from env.stage import verdict
+from env.stage import get_verdict
 
 
-class Inquiry:
+class Environment:
     """ defines an inquiry environment where two agents ask for and give reasons against different sentences in a language
     """
-    def __init__(self, msf, list_of_stages, cl_inferential_theory, cr_inferential_theory, cl_strategy = None, cr_strategy = None):
+    def __init__(self, msf, stage_list, cl_inferential_theory, cr_inferential_theory, cl_strategy = None, cr_strategy = None):
         self.msf = msf
-        self.list_of_stages = list_of_stages
-        self.verdict = verdict(self.list_of_stages[-1])
+        self.stage_list = stage_list
+        self.verdict = get_verdict(self.stage_list[-1])
         self.cl_inferential_theory = cl_inferential_theory
         self.cr_inferential_theory = cr_inferential_theory
         self.icg = self._get_inferential_common_ground(cl_inferential_theory = self.cl_inferential_theory,cr_inferential_theory = self.cr_inferential_theory)
@@ -31,20 +31,20 @@ class Inquiry:
         x = PrettyTable()
         x.field_names = ['Turn', 'Agent', 'Target Num,', 'Prag. Significance', 'Move', 'CL_AC', 'CL_RC', 'CL_AE', 'CL_RE',
                          'CR_AC', 'CR_RC', 'CR_AE', 'CR_RE']
-        first_stage_row(x, self.list_of_stages[0])
+        first_stage_row(x, self.stage_list[0])
         for i in range(1, n_rows):
-            stage_row(x, self.list_of_stages[i])
+            stage_row(x, self.stage_list[i])
         print(x)
 
     def show_full_table(self):
-        self.table(n_rows=len(self.list_of_stages))
+        self.table(n_rows=len(self.stage_list))
         print()
         if self.verdict == 'sustain':
             print('By the end of the inquiry, CL\'s proposed conclusion is sustained.')
         else:
             print('By the end of the inquiry, CL\'s proposed conclusion is rejected.')
 
-        final_stage = self.list_of_stages[-1]
+        final_stage = self.stage_list[-1]
 
         common_ground = frozenset.intersection(final_stage.f_score_sit.cl.ac, final_stage.f_score_sit.cr.ac)
 
@@ -60,30 +60,30 @@ class Inquiry:
         self.table(n_rows=stage + 1)
         # Print all available moves
         print('By the end of this stage, next player has the following',
-              str(len(self.list_of_stages[stage].available_moves['for'])),
+              str(len(self.stage_list[stage].available_moves['for'])),
               'for-moves available:')
         avail_for = []
-        for i in self.list_of_stages[stage].available_moves['for']:
+        for i in self.stage_list[stage].available_moves['for']:
             avail_for.append(str(set(i.prem)) + '⊨' + str(i.conc))
         avail_for.sort()
         print(wrap_list(avail_for, items_per_line=5))
-        # print(wrap_list([i.move_label for i in self.list_of_stages[stage].available_moves['for']], items_per_line=5))
+        # print(wrap_list([i.move_label for i in self.stage_list[stage].available_moves['for']], items_per_line=5))
 
         print('By the end of this stage, next player has the following',
-              str(len(self.list_of_stages[stage].available_moves['against'])),
+              str(len(self.stage_list[stage].available_moves['against'])),
               'against-moves available:')
         avail_against = []
-        for i in self.list_of_stages[stage].available_moves['against']:
+        for i in self.stage_list[stage].available_moves['against']:
             avail_against.append(str(set(i.prem)) + '#' + str(i.conc))
         avail_against.sort()
         print(wrap_list(avail_against, items_per_line=5))
-        # print(wrap_list([i.move_label for i in self.list_of_stages[stage].available_moves['against']], items_per_line=5))
+        # print(wrap_list([i.move_label for i in self.stage_list[stage].available_moves['against']], items_per_line=5))
 
         # verdict at this stage
         if stage == 0:
             print('By the end of this stage, CL\'s proposed conclusion is sustained.')
         else:
-            if verdict(self.list_of_stages[stage]) == 'sustain':
+            if get_verdict(self.stage_list[stage]) == 'sustain':
                 print('By the end of this stage, CL\'s proposed conclusion is sustained.')
             else:
                 print('By the end of this stage, CL\'s proposed conclusion is rejected.')
@@ -183,7 +183,7 @@ class Inquiry:
             self.view_stage(stage = stage)
 
         elif stage == 'all':
-            for i in range(0, len(self.list_of_stages)):
+            for i in range(0, len(self.stage_list)):
                 self.view_stage(stage = i)
 
         else:
